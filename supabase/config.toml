@@ -1,1 +1,16 @@
 project_id = "pzsdloreofufzzuwltlw"
+
+[functions.moodle-proxy]
+verify_jwt = false
+
+[functions.analyze-user]
+verify_jwt = false
+
+[functions.analyze-course]
+verify_jwt = false
+
+[functions.analyze-course-overview]
+verify_jwt = false
+
+[functions.validate-sso]
+verify_jwt = false
