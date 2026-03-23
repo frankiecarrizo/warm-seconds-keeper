@@ -207,3 +207,149 @@ export const getCoursesEnrollmentSummary = async (
 ) => {
   return callProxy(config, "get_courses_enrollment_summary", { courseIds });
 };
+
+// ═══════════════════════════════════════════════════════════════
+// Missing types referenced by hooks/components
+// ═══════════════════════════════════════════════════════════════
+
+export interface SiteInfo {
+  sitename: string;
+  siteurl: string;
+  username: string;
+  fullname: string;
+  userid: number;
+  release: string;
+  version: string;
+}
+
+export interface BasicCourse {
+  id: number;
+  shortname: string;
+  fullname: string;
+  categoryid: number;
+  summary: string;
+  startdate: number;
+  enddate: number;
+}
+
+export interface MoodleCategory {
+  id: number;
+  name: string;
+  parent: number;
+  coursecount: number;
+}
+
+export interface CourseEnrollmentSummary {
+  courseId: number;
+  totalEnrolled: number;
+  totalStudents: number;
+  totalTeachers: number;
+  completed: number;
+  checkedStudents: number;
+  neverAccessed: number;
+}
+
+export interface UsersSummary {
+  total: number;
+  active: number;
+  suspended: number;
+  deleted: number;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Streaming AI analysis functions
+// ═══════════════════════════════════════════════════════════════
+
+interface StreamOptions {
+  onDelta: (text: string) => void;
+  onDone: () => void;
+  onError: (error: string) => void;
+}
+
+async function streamFromEdgeFunction(
+  functionName: string,
+  body: Record<string, any>,
+  { onDelta, onDone, onError }: StreamOptions
+) {
+  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      onError(errData.error || `HTTP ${response.status}`);
+      return;
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      onError("No response body");
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const payload = line.slice(6).trim();
+        if (payload === "[DONE]") {
+          onDone();
+          return;
+        }
+        try {
+          const parsed = JSON.parse(payload);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) onDelta(content);
+        } catch {}
+      }
+    }
+    onDone();
+  } catch (err: any) {
+    onError(err.message || "Stream error");
+  }
+}
+
+export async function streamAnalysis(
+  opts: { userData: UserFullData } & StreamOptions
+) {
+  return streamFromEdgeFunction("analyze-user", { userData: opts.userData }, opts);
+}
+
+export async function streamCourseAnalysis(
+  opts: { courseName: string; quizData: any[] } & StreamOptions
+) {
+  return streamFromEdgeFunction(
+    "analyze-course",
+    { courseName: opts.courseName, quizData: opts.quizData },
+    opts
+  );
+}
+
+export async function streamCourseOverviewAnalysis(
+  opts: { courseName: string; courseData: CourseOverviewData } & StreamOptions
+) {
+  return streamFromEdgeFunction(
+    "analyze-course-overview",
+    { courseName: opts.courseName, courseData: opts.courseData },
+    opts
+  );
+}
+};
