@@ -1,132 +1,354 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getMoodleConnection } from "./moodle-store";
 
-function getConnection() {
-  const conn = getMoodleConnection();
-  if (!conn) throw new Error("No Moodle connection configured");
-  return conn;
+export interface MoodleUser {
+  id: number;
+  username: string;
+  fullname: string;
+  email: string;
+  firstaccess: number;
+  lastaccess: number;
+  profileimageurl?: string;
+  suspended: boolean;
 }
 
-async function callProxy(action: string, params: Record<string, any> = {}) {
-  const conn = getConnection();
+export interface MoodleCourseData {
+  id: number;
+  shortname: string;
+  fullname: string;
+  progress: number | null;
+  completed: boolean;
+  startdate: number;
+  enddate: number;
+  lastaccess: number | null;
+  grades: any[] | null;
+  completion: any | null;
+  quizAttempts: {
+    quizName: string;
+    quizId: number;
+    attempts: any[];
+  }[];
+  roles: string[];
+}
+
+export interface UserFullData {
+  user: MoodleUser;
+  courses: MoodleCourseData[];
+  totalCourses: number;
+}
+
+export interface MoodleConfig {
+  moodleUrl: string;
+  moodleToken: string;
+}
+
+export interface MoodleCourse {
+  id: number;
+  shortname: string;
+  fullname: string;
+  categoryid: number;
+  summary: string;
+  enrolledusercount: number;
+}
+
+export interface CourseStudentData {
+  id: number;
+  fullname: string;
+  email: string;
+  lastaccess: number;
+  completed: boolean;
+  gradeRaw: number | null;
+  gradeMax: number;
+  gradeFormatted: string;
+  gradeItems: any[];
+  quizAttempts: { quizName: string; quizId: number; attempts: any[] }[];
+}
+
+export interface StudentBasicData {
+  id: number;
+  fullname: string;
+  email: string;
+  lastaccess: number;
+  completed: boolean;
+}
+
+export interface CourseOverviewData {
+  totalEnrolled: number;
+  totalStudents: number;
+  totalTeachers: number;
+  neverAccessed: number;
+  students: CourseStudentData[];
+  allStudentsBasic: StudentBasicData[];
+  quizzes: { id: number; name: string }[];
+}
+
+const TOKEN_ERROR_PATTERNS = [
+  "ficha (token) no válida",
+  "invalid token",
+  "token no encontrada",
+  "token not found",
+];
+
+const ACCESS_ERROR_PATTERNS = [
+  "accessexception",
+  "control de acceso",
+  "access exception",
+];
+
+export const isTokenError = (message: string): boolean => {
+  const lower = message.toLowerCase();
+  return TOKEN_ERROR_PATTERNS.some((p) => lower.includes(p));
+};
+
+export const isAccessError = (message: string): boolean => {
+  const lower = message.toLowerCase();
+  return ACCESS_ERROR_PATTERNS.some((p) => lower.includes(p));
+};
+
+const callProxy = async (
+  config: MoodleConfig,
+  action: string,
+  params?: Record<string, any>
+) => {
   const { data, error } = await supabase.functions.invoke("moodle-proxy", {
-    body: {
-      moodleUrl: conn.moodleUrl,
-      moodleToken: conn.moodleToken,
-      action,
-      params,
+    body: { ...config, action, params },
+    headers: {
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
   });
-  if (error) throw new Error(error.message || "Proxy error");
-  if (data?.error) throw new Error(data.error);
+
+  let resolvedError: string | undefined;
+
+  if (data?.error) {
+    resolvedError = data.error;
+  }
+
+  if (error instanceof FunctionsHttpError) {
+    try {
+      const errorBody = await error.context.json();
+      resolvedError = errorBody?.error || error.message;
+    } catch {
+      resolvedError = error.message;
+    }
+  } else if (error) {
+    resolvedError = error.message;
+  }
+
+  if (resolvedError) {
+    if (isTokenError(resolvedError)) {
+      throw new Error("TOKEN_INVALID: El token de Moodle es inválido o expiró.");
+    }
+    if (isAccessError(resolvedError)) {
+      throw new Error("ACCESS_DENIED: El token no tiene permisos.");
+    }
+    throw new Error(resolvedError);
+  }
+
   return data;
+};
+
+export const searchUsers = async (config: MoodleConfig, search: string) => {
+  return callProxy(config, "search_users", { search });
+};
+
+export const searchCourses = async (config: MoodleConfig, search: string) => {
+  const data = await callProxy(config, "search_courses", { search });
+  return (data.courses || []).map((c: any) => ({
+    id: c.id,
+    shortname: c.shortname,
+    fullname: c.fullname,
+    categoryid: c.categoryid,
+    summary: c.summary || "",
+    enrolledusercount: c.enrolledusercount || 0,
+  }));
+};
+
+export const getCourseOverviewData = async (config: MoodleConfig, courseId: number) => {
+  return callProxy(config, "get_course_overview_data", { courseId });
+};
+
+export const getUserFullData = async (config: MoodleConfig, userId: number) => {
+  return callProxy(config, "get_user_full_data", { userId });
+};
+
+export const getUsersSummary = async (config: MoodleConfig) => {
+  return callProxy(config, "get_users_summary");
+};
+
+export const getSiteInfo = async (config: MoodleConfig) => {
+  return callProxy(config, "get_site_info");
+};
+
+export const getQuizAttemptReview = async (
+  config: MoodleConfig,
+  attemptId: number
+) => {
+  return callProxy(config, "get_quiz_attempt_review", { attemptId });
+};
+
+export const getCourseContents = async (
+  config: MoodleConfig,
+  courseId: number
+) => {
+  return callProxy(config, "get_course_contents", { courseId });
+};
+
+export const getCategories = async (config: MoodleConfig) => {
+  return callProxy(config, "get_categories");
+};
+
+export const getAllCourses = async (config: MoodleConfig) => {
+  return callProxy(config, "get_all_courses");
+};
+
+export const getCoursesEnrollmentSummary = async (
+  config: MoodleConfig,
+  courseIds: number[]
+) => {
+  return callProxy(config, "get_courses_enrollment_summary", { courseIds });
+};
+
+// ═══════════════════════════════════════════════════════════════
+// Missing types referenced by hooks/components
+// ═══════════════════════════════════════════════════════════════
+
+export interface SiteInfo {
+  sitename: string;
+  siteurl: string;
+  username: string;
+  fullname: string;
+  userid: number;
+  release: string;
+  version: string;
 }
 
-export async function getSiteInfo() {
-  return callProxy("get_site_info");
+export interface BasicCourse {
+  id: number;
+  shortname: string;
+  fullname: string;
+  categoryid: number;
+  summary: string;
+  startdate: number;
+  enddate: number;
 }
 
-export async function getUsersSummary() {
-  return callProxy("get_users_summary");
+export interface MoodleCategory {
+  id: number;
+  name: string;
+  parent: number;
+  coursecount: number;
 }
 
-export interface StreamCallbacks {
-  onChunk: (text: string) => void;
+export interface CourseEnrollmentSummary {
+  courseId: number;
+  totalEnrolled: number;
+  totalStudents: number;
+  totalTeachers: number;
+  completed: number;
+  checkedStudents: number;
+  neverAccessed: number;
+}
+
+export interface UsersSummary {
+  total: number;
+  active: number;
+  suspended: number;
+  deleted: number;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Streaming AI analysis functions
+// ═══════════════════════════════════════════════════════════════
+
+interface StreamOptions {
+  onDelta: (text: string) => void;
   onDone: () => void;
-  onError: (err: Error) => void;
+  onError: (error: string) => void;
 }
 
-async function callAIStream(
+async function streamFromEdgeFunction(
   functionName: string,
   body: Record<string, any>,
-  callbacks: StreamCallbacks
+  { onDelta, onDone, onError }: StreamOptions
 ) {
-  const conn = getMoodleConnection();
-  if (!conn) {
-    callbacks.onError(new Error("No Moodle connection"));
-    return;
-  }
-
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    },
-    body: JSON.stringify(body),
-  });
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify(body),
+    });
 
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    callbacks.onError(new Error(errData.error || `HTTP ${response.status}`));
-    return;
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) {
-    callbacks.onError(new Error("No response body"));
-    return;
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      if (!line.startsWith("data: ")) continue;
-      const payload = line.slice(6).trim();
-      if (payload === "[DONE]") {
-        callbacks.onDone();
-        return;
-      }
-      try {
-        const parsed = JSON.parse(payload);
-        const content = parsed.choices?.[0]?.delta?.content;
-        if (content) callbacks.onChunk(content);
-      } catch {}
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      onError(errData.error || `HTTP ${response.status}`);
+      return;
     }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      onError("No response body");
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const payload = line.slice(6).trim();
+        if (payload === "[DONE]") {
+          onDone();
+          return;
+        }
+        try {
+          const parsed = JSON.parse(payload);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) onDelta(content);
+        } catch {}
+      }
+    }
+    onDone();
+  } catch (err: any) {
+    onError(err.message || "Stream error");
   }
-  callbacks.onDone();
 }
 
-export function analyzeUser(userData: any, callbacks: StreamCallbacks) {
-  return callAIStream("analyze-user", { userData }, callbacks);
-}
-
-export function analyzeCourse(
-  courseName: string,
-  quizData: any[],
-  callbacks: StreamCallbacks
+export async function streamAnalysis(
+  opts: { userData: UserFullData } & StreamOptions
 ) {
-  return callAIStream("analyze-course", { courseName, quizData }, callbacks);
+  return streamFromEdgeFunction("analyze-user", { userData: opts.userData }, opts);
 }
 
-export function analyzeCourseOverview(
-  courseName: string,
-  courseData: any,
-  callbacks: StreamCallbacks
+export async function streamCourseAnalysis(
+  opts: { courseName: string; quizData: any[] } & StreamOptions
 ) {
-  return callAIStream(
-    "analyze-course-overview",
-    { courseName, courseData },
-    callbacks
+  return streamFromEdgeFunction(
+    "analyze-course",
+    { courseName: opts.courseName, quizData: opts.quizData },
+    opts
   );
 }
 
-export async function validateSSO(token: string) {
-  const { data, error } = await supabase.functions.invoke("validate-sso", {
-    body: { token },
-  });
-  if (error) throw new Error(error.message);
-  return data as { valid: boolean; payload?: any; error?: string };
+export async function streamCourseOverviewAnalysis(
+  opts: { courseName: string; courseData: CourseOverviewData } & StreamOptions
+) {
+  return streamFromEdgeFunction(
+    "analyze-course-overview",
+    { courseName: opts.courseName, courseData: opts.courseData },
+    opts
+  );
 }
