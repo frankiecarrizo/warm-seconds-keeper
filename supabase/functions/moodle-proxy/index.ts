@@ -278,12 +278,15 @@ serve(async (req) => {
             roles = (profiles[0]?.roles || []).map((r: any) => r.shortname);
           } catch {}
 
+          // Derive completed from the completion API response, fallback to course object
+          const isCompleted = completion?.completed === true || course.completed === true;
+
           coursesData.push({
             id: course.id,
             shortname: course.shortname,
             fullname: course.fullname,
             progress: course.progress ?? null,
-            completed: course.completed || false,
+            completed: isCompleted,
             startdate: course.startdate || 0,
             enddate: course.enddate || 0,
             lastaccess: course.lastaccess ?? null,
