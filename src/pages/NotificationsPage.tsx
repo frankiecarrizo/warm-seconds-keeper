@@ -29,12 +29,12 @@ const callProxy = async (config: MoodleConfig, action: string, params?: Record<s
 };
 
 export default function NotificationsPage() {
-  const { isConnected, connect } = useMoodleConnection();
+  const { isConnected, connect, disconnect, configUrl } = useMoodleConnection();
 
   if (!isConnected) {
     return (
       <div className="p-6 max-w-md mx-auto mt-20">
-        <MoodleConnectForm onConnect={connect} />
+        <MoodleConnectForm onConnect={connect} isConnected={isConnected} onDisconnect={disconnect} configUrl={configUrl} />
       </div>
     );
   }
