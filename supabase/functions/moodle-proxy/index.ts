@@ -191,9 +191,10 @@ serve(async (req) => {
         const user = userRes[0];
         if (!user) throw { message: "User not found", status: 404 };
 
-        // Get user courses
+        // Get user courses (include hidden/non-visible courses)
         const courses = await callMoodle("core_enrol_get_users_courses", {
           userid: String(userId),
+          returnhidden: "1",
         });
 
         const coursesData = [];

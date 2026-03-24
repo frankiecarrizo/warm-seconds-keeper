@@ -78,10 +78,13 @@ export function useGeneralAnalytics() {
         username: "", fullname: "", userid: 0, release: "", version: "",
       };
 
-      setData({ siteInfo: fallbackSiteInfo, courses, categories, enrollmentSummaries: [], usersSummary });
+      // Filter out site-level course (id=1)
+      const filteredCourses = courses.filter((c: any) => c.id !== 1);
+
+      setData({ siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary });
 
       setEnrollmentLoading(true);
-      const courseIds = courses.map((c) => c.id);
+      const courseIds = filteredCourses.map((c: any) => c.id);
       const batchSize = 5;
       const allSummaries: CourseEnrollmentSummary[] = [];
 
