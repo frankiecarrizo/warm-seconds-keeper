@@ -45,6 +45,7 @@ const App = () => (
         <MoodleConnectionProvider>
           <Routes>
             <Route path="/sso" element={<SsoLogin />} />
+            <Route path="/sso-login" element={<SsoLogin />} />
             <Route path="/" element={<AppLayout><GeneralPage /></AppLayout>} />
             <Route path="/cursos" element={<AppLayout><CoursesPage /></AppLayout>} />
             <Route path="/estudiantes" element={<AppLayout><Index /></AppLayout>} />
