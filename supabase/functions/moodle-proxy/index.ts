@@ -191,11 +191,32 @@ serve(async (req) => {
         const user = userRes[0];
         if (!user) throw { message: "User not found", status: 404 };
 
-        // Get user courses (include hidden/non-visible courses)
-        const courses = await callMoodle("core_enrol_get_users_courses", {
+        // Get user courses - fetch visible ones first, then supplement with all courses
+        let courses = await callMoodle("core_enrol_get_users_courses", {
           userid: String(userId),
-          returnhidden: "1",
         });
+
+        // Also get all courses to find hidden ones where user is enrolled
+        try {
+          const allCourses = await callMoodle("core_course_get_courses");
+          const userCourseIds = new Set(courses.map((c: any) => c.id));
+          
+          // For each course not in the user's visible list, check enrollment
+          for (const course of allCourses) {
+            if (course.id === 1 || userCourseIds.has(course.id)) continue;
+            if (course.visible === 0) {
+              try {
+                const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
+                  courseid: String(course.id),
+                });
+                const isEnrolled = enrolled.some((u: any) => u.id === userId);
+                if (isEnrolled) {
+                  courses.push(course);
+                }
+              } catch {}
+            }
+          }
+        } catch {}
 
         const coursesData = [];
         for (const course of courses.filter((c: any) => c.id !== 1)) {
