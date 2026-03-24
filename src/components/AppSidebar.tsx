@@ -1,4 +1,4 @@
-import { Users, BookOpen, Sparkles, LayoutDashboard, GraduationCap, LogOut, Plug } from "lucide-react";
+import { Users, BookOpen, Sparkles, LayoutDashboard, GraduationCap, LogOut, Plug, Bell } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ const items = [
   { title: "General", url: "/", icon: LayoutDashboard },
   { title: "Cursos", url: "/cursos", icon: BookOpen },
   { title: "Estudiantes", url: "/estudiantes", icon: Users },
+  { title: "Notificaciones", url: "/notificaciones", icon: Bell },
 ];
 
 interface AppSidebarProps {
