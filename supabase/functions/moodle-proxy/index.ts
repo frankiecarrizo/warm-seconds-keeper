@@ -497,6 +497,67 @@ serve(async (req) => {
         break;
       }
 
+      // ── Send message to user(s) ─────────────────────────────────
+      case "send_message": {
+        const userIds: number[] = params?.userIds || [];
+        const text: string = params?.text || "";
+        if (!userIds.length || !text.trim()) {
+          throw { message: "Missing userIds or text", status: 400 };
+        }
+
+        // Get current user id from site info
+        const siteInfo = await callMoodle("core_webservice_get_site_info");
+        const fromUserId = siteInfo.userid;
+
+        const messages = userIds.map((uid: number) => ({
+          touserid: uid,
+          text,
+          textformat: 0,
+        }));
+
+        result = await callMoodle("core_message_send_instant_messages", {
+          ...Object.fromEntries(
+            messages.flatMap((m: any, i: number) => [
+              [`messages[${i}][touserid]`, String(m.touserid)],
+              [`messages[${i}][text]`, m.text],
+              [`messages[${i}][textformat]`, String(m.textformat)],
+            ])
+          ),
+        });
+        break;
+      }
+
+      // ── Get all users (for "send to all") ─────────────────────────
+      case "get_all_users": {
+        let allUsersList: any[] = [];
+        try {
+          const res = await callMoodle("core_user_get_users", {
+            "criteria[0][key]": "email",
+            "criteria[0][value]": "%@%",
+          });
+          allUsersList = res.users || [];
+        } catch {}
+
+        if (allUsersList.length === 0) {
+          try {
+            const res = await callMoodle("core_user_get_users", {
+              "criteria[0][key]": "lastname",
+              "criteria[0][value]": "%",
+            });
+            allUsersList = res.users || [];
+          } catch {}
+        }
+
+        result = allUsersList
+          .filter((u: any) => u.id > 1 && u.username !== "guest" && !u.suspended && !u.deleted)
+          .map((u: any) => ({
+            id: u.id,
+            fullname: u.fullname,
+            email: u.email || "",
+          }));
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Unknown action: ${action}` }),
