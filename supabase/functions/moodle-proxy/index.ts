@@ -198,7 +198,7 @@ serve(async (req) => {
         });
 
         const coursesData = [];
-        for (const course of courses) {
+        for (const course of courses.filter((c: any) => c.id !== 1)) {
           let grades = null;
           try {
             const g = await callMoodle("gradereport_user_get_grade_items", {
