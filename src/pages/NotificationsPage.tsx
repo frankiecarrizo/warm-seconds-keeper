@@ -128,8 +128,12 @@ function SendByCourse() {
     setSending(true);
     try {
       const userIds = enrolledUsers.map((u: any) => u.id);
-      await callProxy(cfg, "send_message", { userIds, text: message });
-      toast.success(`Mensaje enviado a ${userIds.length} estudiantes del curso.`);
+      const res = await callProxy(cfg, "send_message", { userIds, text: message });
+      if (res?.hasErrors && res.errors?.length) {
+        toast.warning(`Enviado con ${res.errors.length} errores: ${res.errors[0]}`);
+      } else {
+        toast.success(`Mensaje enviado a ${userIds.length} estudiantes del curso.`);
+      }
       setMessage("");
     } catch (e: any) {
       toast.error(e.message);
@@ -241,8 +245,12 @@ function SendByUser() {
     if (!cfg) return;
     setSending(true);
     try {
-      await callProxy(cfg, "send_message", { userIds: [selectedUser.id], text: message });
-      toast.success(`Mensaje enviado a ${selectedUser.fullname}.`);
+      const res = await callProxy(cfg, "send_message", { userIds: [selectedUser.id], text: message });
+      if (res?.hasErrors && res.errors?.length) {
+        toast.warning(`Error: ${res.errors[0]}`);
+      } else {
+        toast.success(`Mensaje enviado a ${selectedUser.fullname}.`);
+      }
       setMessage("");
     } catch (e: any) {
       toast.error(e.message);
@@ -344,8 +352,12 @@ function SendToAll() {
     try {
       const users = await callProxy(cfg, "get_all_users");
       const userIds = users.map((u: any) => u.id);
-      await callProxy(cfg, "send_message", { userIds, text: message });
-      toast.success(`Mensaje enviado a ${userIds.length} usuarios.`);
+      const res = await callProxy(cfg, "send_message", { userIds, text: message });
+      if (res?.hasErrors && res.errors?.length) {
+        toast.warning(`Enviado con ${res.errors.length} errores. Primero: ${res.errors[0]}`);
+      } else {
+        toast.success(`Mensaje enviado a ${userIds.length} usuarios.`);
+      }
       setMessage("");
       setConfirmed(false);
     } catch (e: any) {

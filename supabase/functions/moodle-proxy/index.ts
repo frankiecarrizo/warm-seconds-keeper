@@ -505,25 +505,41 @@ serve(async (req) => {
           throw { message: "Missing userIds or text", status: 400 };
         }
 
-        // Get current user id from site info
-        const siteInfo = await callMoodle("core_webservice_get_site_info");
-        const fromUserId = siteInfo.userid;
+        // Send in batches of 20 to avoid timeouts
+        const batchSize = 20;
+        const allResults: any[] = [];
+        const errors: string[] = [];
 
-        const messages = userIds.map((uid: number) => ({
-          touserid: uid,
-          text,
-          textformat: 0,
-        }));
+        for (let i = 0; i < userIds.length; i += batchSize) {
+          const batch = userIds.slice(i, i + batchSize);
+          const msgParams: Record<string, string> = {};
+          batch.forEach((uid, idx) => {
+            msgParams[`messages[${idx}][touserid]`] = String(uid);
+            msgParams[`messages[${idx}][text]`] = text;
+            msgParams[`messages[${idx}][textformat]`] = "0";
+          });
 
-        result = await callMoodle("core_message_send_instant_messages", {
-          ...Object.fromEntries(
-            messages.flatMap((m: any, i: number) => [
-              [`messages[${i}][touserid]`, String(m.touserid)],
-              [`messages[${i}][text]`, m.text],
-              [`messages[${i}][textformat]`, String(m.textformat)],
-            ])
-          ),
-        });
+          const batchResult = await callMoodle("core_message_send_instant_messages", msgParams);
+
+          // Check individual message results for errors
+          if (Array.isArray(batchResult)) {
+            for (const r of batchResult) {
+              if (r.errormessage) {
+                errors.push(`User ${r.touserid || 'unknown'}: ${r.errormessage}`);
+              }
+            }
+            allResults.push(...batchResult);
+          } else {
+            allResults.push(batchResult);
+          }
+        }
+
+        result = {
+          sent: allResults.length,
+          errors,
+          hasErrors: errors.length > 0,
+          results: allResults,
+        };
         break;
       }
 
