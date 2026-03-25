@@ -18,6 +18,8 @@ export interface MoodleCourseData {
   fullname: string;
   progress: number | null;
   completed: boolean;
+  completionPercentage: number;
+  completionMethod: "criteria" | "activities" | "none";
   startdate: number;
   enddate: number;
   lastaccess: number | null;
