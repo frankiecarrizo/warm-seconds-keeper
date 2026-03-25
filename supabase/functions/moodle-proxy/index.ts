@@ -483,20 +483,15 @@ serve(async (req) => {
 
             let completedCount = 0;
             let checkedCount = 0;
+            let totalPercentage = 0;
             const neverAccessed = studentsArr.filter((s: any) => !s.lastcourseaccess && !s.lastaccess).length;
 
             // Check completion for up to 10 students per course to stay fast
             for (const s of studentsArr.slice(0, 10)) {
-              try {
-                const c = await callMoodle("core_completion_get_course_completion_status", {
-                  courseid: String(cid),
-                  userid: String(s.id),
-                });
-                checkedCount++;
-                if (c.completionstatus?.completed) completedCount++;
-              } catch {
-                checkedCount++;
-              }
+              const comp = await getCompletionForUser(cid, s.id);
+              checkedCount++;
+              totalPercentage += comp.percentage;
+              if (comp.completed) completedCount++;
             }
 
             summaries.push({
@@ -506,6 +501,7 @@ serve(async (req) => {
               totalTeachers: teachersArr.length,
               completed: completedCount,
               checkedStudents: checkedCount,
+              avgCompletionPercentage: checkedCount > 0 ? Math.round(totalPercentage / checkedCount) : 0,
               neverAccessed,
             });
           } catch {
