@@ -59,6 +59,8 @@ export interface CourseStudentData {
   email: string;
   lastaccess: number;
   completed: boolean;
+  completionPercentage: number;
+  completionMethod: "criteria" | "activities" | "none";
   gradeRaw: number | null;
   gradeMax: number;
   gradeFormatted: string;
