@@ -106,7 +106,7 @@ export function UserCharts({ data }: UserChartsProps) {
     ).length / (data.courses.length || 1) * 100;
 
     return [
-      { metric: "Progreso", value: Math.round(avgProgress) },
+      { metric: "Progreso", value: Math.round(avgCompletionPct) },
       { metric: "Completación", value: Math.round(completionRate) },
       { metric: "Calificaciones", value: Math.round(avgGrade) },
       { metric: "Quizzes", value: Math.round(quizAvg) },
