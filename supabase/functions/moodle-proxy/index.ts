@@ -268,14 +268,8 @@ serve(async (req) => {
             grades = g.usergrades?.[0]?.gradeitems || null;
           } catch {}
 
-          let completion = null;
-          try {
-            const c = await callMoodle("core_completion_get_course_completion_status", {
-              courseid: String(course.id),
-              userid: String(userId),
-            });
-            completion = c.completionstatus || null;
-          } catch {}
+          // Smart completion: official criteria or activity-based fallback
+          const completionResult = await getCompletionForUser(course.id, userId);
 
           // Get quiz attempts
           const contents = await callMoodle("core_course_get_contents", {
@@ -317,20 +311,19 @@ serve(async (req) => {
             roles = (profiles[0]?.roles || []).map((r: any) => r.shortname);
           } catch {}
 
-          // Derive completed from the completion API response, fallback to course object
-          const isCompleted = completion?.completed === true || course.completed === true;
-
           coursesData.push({
             id: course.id,
             shortname: course.shortname,
             fullname: course.fullname,
             progress: course.progress ?? null,
-            completed: isCompleted,
+            completed: completionResult.completed,
+            completionPercentage: completionResult.percentage,
+            completionMethod: completionResult.method,
             startdate: course.startdate || 0,
             enddate: course.enddate || 0,
             lastaccess: course.lastaccess ?? null,
             grades,
-            completion,
+            completion: null,
             quizAttempts,
             roles,
           });
