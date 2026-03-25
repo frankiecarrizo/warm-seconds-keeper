@@ -250,6 +250,7 @@ export interface CourseEnrollmentSummary {
   totalTeachers: number;
   completed: number;
   checkedStudents: number;
+  avgCompletionPercentage: number;
   neverAccessed: number;
 }
 
