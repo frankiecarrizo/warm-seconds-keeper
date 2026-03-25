@@ -414,14 +414,8 @@ serve(async (req) => {
             }
           } catch {}
 
-          let completed = false;
-          try {
-            const c = await callMoodle("core_completion_get_course_completion_status", {
-              courseid: String(courseId),
-              userid: String(s.id),
-            });
-            completed = c.completionstatus?.completed || false;
-          } catch {}
+          // Smart completion
+          const completionResult = await getCompletionForUser(courseId, s.id);
 
           const quizAttempts = [];
           for (const quiz of quizzes) {
@@ -444,7 +438,9 @@ serve(async (req) => {
             fullname: s.fullname,
             email: s.email || "",
             lastaccess: s.lastcourseaccess || s.lastaccess || 0,
-            completed,
+            completed: completionResult.completed,
+            completionPercentage: completionResult.percentage,
+            completionMethod: completionResult.method,
             gradeRaw,
             gradeMax,
             gradeFormatted,
