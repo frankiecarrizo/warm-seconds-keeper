@@ -44,6 +44,45 @@ serve(async (req) => {
       return data;
     };
 
+    // ── Smart completion helper ──────────────────────────────────
+    // 1. Try official course completion status
+    // 2. Fallback: calculate % of completed activities
+    const getCompletionForUser = async (
+      courseId: number,
+      userId: number
+    ): Promise<{ completed: boolean; percentage: number; method: "criteria" | "activities" | "none" }> => {
+      // Try official completion criteria first
+      try {
+        const c = await callMoodle("core_completion_get_course_completion_status", {
+          courseid: String(courseId),
+          userid: String(userId),
+        });
+        if (c.completionstatus) {
+          const completed = c.completionstatus.completed === true;
+          return { completed, percentage: completed ? 100 : 0, method: "criteria" };
+        }
+      } catch {}
+
+      // Fallback: activity completion
+      try {
+        const actResult = await callMoodle("core_completion_get_activities_completion_status", {
+          courseid: String(courseId),
+          userid: String(userId),
+        });
+        const statuses = actResult.statuses || [];
+        if (statuses.length === 0) {
+          return { completed: false, percentage: 0, method: "none" };
+        }
+        const completedCount = statuses.filter(
+          (s: any) => s.state === 1 || s.state === 2 // 1=complete, 2=complete-pass
+        ).length;
+        const pct = Math.round((completedCount / statuses.length) * 100);
+        return { completed: pct === 100, percentage: pct, method: "activities" };
+      } catch {}
+
+      return { completed: false, percentage: 0, method: "none" };
+    };
+
     let result: any;
 
     switch (action) {
