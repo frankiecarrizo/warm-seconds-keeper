@@ -122,13 +122,11 @@ export function CourseCharts({ data }: CourseChartsProps) {
         name: s.fullname,
         email: s.email,
         lastaccess: s.lastaccess,
-        status: !s.lastaccess ? "Nunca ingresó" : s.completed ? "Finalizado" : "No finalizado",
+        completionPct: (s as any).completionPercentage ?? (s.completed ? 100 : 0),
+        status: !s.lastaccess ? "Nunca ingresó" : s.completed ? "Finalizado" : (s as any).completionPercentage > 0 ? `${(s as any).completionPercentage}%` : "No finalizado",
         grade: gradeMap[s.id] ?? null,
       }))
-      .sort((a, b) => {
-        const order = { "Finalizado": 0, "No finalizado": 1, "Nunca ingresó": 2 };
-        return (order[a.status as keyof typeof order] ?? 3) - (order[b.status as keyof typeof order] ?? 3);
-      });
+      .sort((a, b) => b.completionPct - a.completionPct);
   }, [allStudents, gradeMap]);
 
   const getBadgeVariant = (grade: number) => {
