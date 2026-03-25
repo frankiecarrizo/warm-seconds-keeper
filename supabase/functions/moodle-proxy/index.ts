@@ -44,6 +44,45 @@ serve(async (req) => {
       return data;
     };
 
+    // ── Smart completion helper ──────────────────────────────────
+    // 1. Try official course completion status
+    // 2. Fallback: calculate % of completed activities
+    const getCompletionForUser = async (
+      courseId: number,
+      userId: number
+    ): Promise<{ completed: boolean; percentage: number; method: "criteria" | "activities" | "none" }> => {
+      // Try official completion criteria first
+      try {
+        const c = await callMoodle("core_completion_get_course_completion_status", {
+          courseid: String(courseId),
+          userid: String(userId),
+        });
+        if (c.completionstatus) {
+          const completed = c.completionstatus.completed === true;
+          return { completed, percentage: completed ? 100 : 0, method: "criteria" };
+        }
+      } catch {}
+
+      // Fallback: activity completion
+      try {
+        const actResult = await callMoodle("core_completion_get_activities_completion_status", {
+          courseid: String(courseId),
+          userid: String(userId),
+        });
+        const statuses = actResult.statuses || [];
+        if (statuses.length === 0) {
+          return { completed: false, percentage: 0, method: "none" };
+        }
+        const completedCount = statuses.filter(
+          (s: any) => s.state === 1 || s.state === 2 // 1=complete, 2=complete-pass
+        ).length;
+        const pct = Math.round((completedCount / statuses.length) * 100);
+        return { completed: pct === 100, percentage: pct, method: "activities" };
+      } catch {}
+
+      return { completed: false, percentage: 0, method: "none" };
+    };
+
     let result: any;
 
     switch (action) {
@@ -229,14 +268,8 @@ serve(async (req) => {
             grades = g.usergrades?.[0]?.gradeitems || null;
           } catch {}
 
-          let completion = null;
-          try {
-            const c = await callMoodle("core_completion_get_course_completion_status", {
-              courseid: String(course.id),
-              userid: String(userId),
-            });
-            completion = c.completionstatus || null;
-          } catch {}
+          // Smart completion: official criteria or activity-based fallback
+          const completionResult = await getCompletionForUser(course.id, userId);
 
           // Get quiz attempts
           const contents = await callMoodle("core_course_get_contents", {
@@ -278,20 +311,19 @@ serve(async (req) => {
             roles = (profiles[0]?.roles || []).map((r: any) => r.shortname);
           } catch {}
 
-          // Derive completed from the completion API response, fallback to course object
-          const isCompleted = completion?.completed === true || course.completed === true;
-
           coursesData.push({
             id: course.id,
             shortname: course.shortname,
             fullname: course.fullname,
             progress: course.progress ?? null,
-            completed: isCompleted,
+            completed: completionResult.completed,
+            completionPercentage: completionResult.percentage,
+            completionMethod: completionResult.method,
             startdate: course.startdate || 0,
             enddate: course.enddate || 0,
             lastaccess: course.lastaccess ?? null,
             grades,
-            completion,
+            completion: null,
             quizAttempts,
             roles,
           });
@@ -382,14 +414,8 @@ serve(async (req) => {
             }
           } catch {}
 
-          let completed = false;
-          try {
-            const c = await callMoodle("core_completion_get_course_completion_status", {
-              courseid: String(courseId),
-              userid: String(s.id),
-            });
-            completed = c.completionstatus?.completed || false;
-          } catch {}
+          // Smart completion
+          const completionResult = await getCompletionForUser(courseId, s.id);
 
           const quizAttempts = [];
           for (const quiz of quizzes) {
@@ -412,7 +438,9 @@ serve(async (req) => {
             fullname: s.fullname,
             email: s.email || "",
             lastaccess: s.lastcourseaccess || s.lastaccess || 0,
-            completed,
+            completed: completionResult.completed,
+            completionPercentage: completionResult.percentage,
+            completionMethod: completionResult.method,
             gradeRaw,
             gradeMax,
             gradeFormatted,
@@ -455,20 +483,15 @@ serve(async (req) => {
 
             let completedCount = 0;
             let checkedCount = 0;
+            let totalPercentage = 0;
             const neverAccessed = studentsArr.filter((s: any) => !s.lastcourseaccess && !s.lastaccess).length;
 
             // Check completion for up to 10 students per course to stay fast
             for (const s of studentsArr.slice(0, 10)) {
-              try {
-                const c = await callMoodle("core_completion_get_course_completion_status", {
-                  courseid: String(cid),
-                  userid: String(s.id),
-                });
-                checkedCount++;
-                if (c.completionstatus?.completed) completedCount++;
-              } catch {
-                checkedCount++;
-              }
+              const comp = await getCompletionForUser(cid, s.id);
+              checkedCount++;
+              totalPercentage += comp.percentage;
+              if (comp.completed) completedCount++;
             }
 
             summaries.push({
@@ -478,6 +501,7 @@ serve(async (req) => {
               totalTeachers: teachersArr.length,
               completed: completedCount,
               checkedStudents: checkedCount,
+              avgCompletionPercentage: checkedCount > 0 ? Math.round(totalPercentage / checkedCount) : 0,
               neverAccessed,
             });
           } catch {

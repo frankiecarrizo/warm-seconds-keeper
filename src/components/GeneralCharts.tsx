@@ -332,7 +332,7 @@ export function GeneralCharts({
                   <TableBody>
                     {courses.map((course: any) => {
                       const s = summaryMap.get(course.id);
-                      const compPct = s && s.checkedStudents > 0 ? Math.round((s.completed / s.checkedStudents) * 100) : null;
+                      const compPct = s?.avgCompletionPercentage ?? (s && s.checkedStudents > 0 ? Math.round((s.completed / s.checkedStudents) * 100) : null);
                       return (
                         <TableRow key={course.id}>
                           <TableCell>

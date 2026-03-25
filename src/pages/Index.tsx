@@ -199,9 +199,9 @@ const Index = () => {
                   <Card className="glass-card">
                     <CardContent className="p-4 text-center">
                       <p className="text-2xl font-bold text-warning">
-                        {Math.round(userData.courses.reduce((s, c) => s + (c.progress ?? 0), 0) / (userData.courses.length || 1))}%
+                        {Math.round(userData.courses.reduce((s, c) => s + (c.completionPercentage ?? (c.completed ? 100 : 0)), 0) / (userData.courses.length || 1))}%
                       </p>
-                      <p className="text-xs text-muted-foreground">Progreso promedio</p>
+                      <p className="text-xs text-muted-foreground">Finalización promedio</p>
                     </CardContent>
                   </Card>
                   <Card className="glass-card">

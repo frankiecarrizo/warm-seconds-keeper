@@ -162,17 +162,22 @@ export function CourseDetail({ course, config }: CourseDetailProps) {
                     <Badge variant="default" className="bg-success/20 text-success border-success/30 text-xs shrink-0">
                       <CheckCircle2 className="h-3 w-3 mr-1" /> Completado
                     </Badge>
+                  ) : course.completionPercentage > 0 ? (
+                    <Badge variant="secondary" className="text-xs shrink-0">{course.completionPercentage}% completado</Badge>
                   ) : progress > 0 ? (
                     <Badge variant="secondary" className="text-xs shrink-0">En progreso</Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs shrink-0">Sin iniciar</Badge>
                   )}
+                  {course.completionMethod === "activities" && (
+                    <Badge variant="outline" className="text-[10px] shrink-0 opacity-60">por actividades</Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 mt-1.5">
                   <div className="flex-1 max-w-48">
-                    <Progress value={progress} className="h-1.5" />
+                    <Progress value={course.completionPercentage || progress} className="h-1.5" />
                   </div>
-                  <span className="text-xs text-muted-foreground font-mono">{Math.round(progress)}%</span>
+                  <span className="text-xs text-muted-foreground font-mono">{course.completionPercentage || Math.round(progress)}%</span>
                   {courseGrade?.gradeformatted && (
                     <span className={`text-xs font-semibold ${getGradeColor(
                       courseGrade.grademax > 0 ? (courseGrade.graderaw / courseGrade.grademax) * 100 : 0

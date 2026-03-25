@@ -93,8 +93,8 @@ export function UserCharts({ data }: UserChartsProps) {
   }, [data]);
 
   const radarData = useMemo(() => {
-    const avgProgress = data.courses.reduce((s, c) => s + (c.progress ?? 0), 0) / (data.courses.length || 1);
-    const completionRate = (data.courses.filter((c) => c.completed).length / (data.courses.length || 1)) * 100;
+    const avgCompletionPct = data.courses.reduce((s, c) => s + (c.completionPercentage ?? (c.completed ? 100 : 0)), 0) / (data.courses.length || 1);
+    const completionRate = avgCompletionPct;
     const avgGrade = gradeData.length > 0
       ? gradeData.reduce((s, g) => s + g.calificacion, 0) / gradeData.length
       : 0;
@@ -106,7 +106,7 @@ export function UserCharts({ data }: UserChartsProps) {
     ).length / (data.courses.length || 1) * 100;
 
     return [
-      { metric: "Progreso", value: Math.round(avgProgress) },
+      { metric: "Progreso", value: Math.round(avgCompletionPct) },
       { metric: "Completación", value: Math.round(completionRate) },
       { metric: "Calificaciones", value: Math.round(avgGrade) },
       { metric: "Quizzes", value: Math.round(quizAvg) },
