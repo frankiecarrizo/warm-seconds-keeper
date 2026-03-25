@@ -138,7 +138,9 @@ export function CourseCharts({ data }: CourseChartsProps) {
   const getStatusBadgeVariant = (status: string) => {
     if (status === "Finalizado") return "default";
     if (status === "No finalizado") return "secondary";
-    return "destructive";
+    if (status === "Nunca ingresó") return "destructive";
+    // Percentage-based status
+    return "secondary";
   };
 
   const isVisible = (id: string) => visibleWidgets.some((w) => w.id === id);
