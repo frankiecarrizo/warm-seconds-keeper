@@ -116,7 +116,8 @@ const GeneralPage = () => {
 
   // Aggregated stats
   const totalStudents = enrollmentSummaries.reduce((s, e) => s + e.totalStudents, 0);
-  const totalTeachers = enrollmentSummaries.reduce((s, e) => s + e.totalTeachers, 0);
+  const uniqueTeacherIds = new Set(enrollmentSummaries.flatMap((e: any) => e.teacherIds || []));
+  const totalTeachers = uniqueTeacherIds.size;
   const totalEnrolled = enrollmentSummaries.reduce((s, e) => s + e.totalEnrolled, 0);
   const totalCompleted = enrollmentSummaries.reduce((s, e) => s + e.completed, 0);
   const totalChecked = enrollmentSummaries.reduce((s, e) => s + e.checkedStudents, 0);
