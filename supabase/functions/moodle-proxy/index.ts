@@ -505,6 +505,7 @@ serve(async (req) => {
               totalEnrolled: enrolled.length,
               totalStudents: studentsArr.length,
               totalTeachers: teachersArr.length,
+              teacherIds: teachersArr.map((t: any) => t.id),
               completed: completedCount,
               checkedStudents: checkedCount,
               avgCompletionPercentage: checkedCount > 0 ? Math.round(totalPercentage / checkedCount) : 0,
