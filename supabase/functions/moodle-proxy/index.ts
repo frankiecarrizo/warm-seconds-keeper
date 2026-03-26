@@ -486,12 +486,18 @@ serve(async (req) => {
             let totalPercentage = 0;
             const neverAccessed = studentsArr.filter((s: any) => !s.lastcourseaccess && !s.lastaccess).length;
 
-            // Check completion for up to 10 students per course to stay fast
-            for (const s of studentsArr.slice(0, 10)) {
-              const comp = await getCompletionForUser(cid, s.id);
-              checkedCount++;
-              totalPercentage += comp.percentage;
-              if (comp.completed) completedCount++;
+            // Check completion for ALL students in parallel batches of 10
+            const compBatchSize = 10;
+            for (let si = 0; si < studentsArr.length; si += compBatchSize) {
+              const batch = studentsArr.slice(si, si + compBatchSize);
+              const results = await Promise.all(
+                batch.map((s: any) => getCompletionForUser(cid, s.id).catch(() => ({ completed: false, percentage: 0, method: "none" as const })))
+              );
+              for (const comp of results) {
+                checkedCount++;
+                totalPercentage += comp.percentage;
+                if (comp.completed) completedCount++;
+              }
             }
 
             summaries.push({
