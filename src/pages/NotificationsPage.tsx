@@ -222,7 +222,9 @@ function SendByCourse() {
                       ? allUsers.length
                       : key === "never_accessed"
                         ? allUsers.filter((u) => u.lastcourseaccess === 0).length
-                        : allUsers.filter((u) => u.lastcourseaccess > 0 && !u.completed).length;
+                        : key === "not_completed"
+                          ? allUsers.filter((u) => u.lastcourseaccess > 0 && !u.completed).length
+                          : allUsers.filter((u) => u.completed).length;
                     return (
                       <Button
                         key={key}
