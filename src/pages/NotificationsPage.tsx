@@ -234,7 +234,7 @@ function SendByCourse() {
                         key={key}
                         variant={filter === key ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setFilter(key)}
+                        onClick={() => { setFilter(key); setShowAllNames(false); }}
                         className="gap-1.5 text-xs"
                       >
                         {filterLabels[key]}
