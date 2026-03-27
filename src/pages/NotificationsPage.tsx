@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -87,6 +87,9 @@ type EnrichedUser = {
 
 type CourseFilter = "all" | "never_accessed" | "not_completed" | "completed";
 
+const NAMES_PER_ROW = 6;
+const VISIBLE_ROWS = 2;
+
 function SendByCourse() {
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState<any[]>([]);
@@ -97,6 +100,7 @@ function SendByCourse() {
   const [searching, setSearching] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showAllNames, setShowAllNames] = useState(false);
 
   const filteredUsers = allUsers.filter((u) => {
     if (filter === "never_accessed") return u.lastcourseaccess === 0;
@@ -230,7 +234,7 @@ function SendByCourse() {
                         key={key}
                         variant={filter === key ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setFilter(key)}
+                        onClick={() => { setFilter(key); setShowAllNames(false); }}
                         className="gap-1.5 text-xs"
                       >
                         {filterLabels[key]}
@@ -246,6 +250,28 @@ function SendByCourse() {
                   <Users className="h-3.5 w-3.5 inline mr-1" />
                   {filteredUsers.length} estudiantes seleccionados
                 </p>
+
+                {filteredUsers.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {(showAllNames ? filteredUsers : filteredUsers.slice(0, NAMES_PER_ROW * VISIBLE_ROWS)).map((u) => (
+                        <Badge key={u.id} variant="outline" className="text-xs font-normal">
+                          {u.fullname}
+                        </Badge>
+                      ))}
+                    </div>
+                    {filteredUsers.length > NAMES_PER_ROW * VISIBLE_ROWS && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground"
+                        onClick={() => setShowAllNames(!showAllNames)}
+                      >
+                        {showAllNames ? "Ver menos" : `Ver todos (${filteredUsers.length})`}
+                      </Button>
+                    )}
+                  </div>
+                )}
               </>
             )}
 
