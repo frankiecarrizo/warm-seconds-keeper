@@ -76,15 +76,33 @@ export default function NotificationsPage() {
   );
 }
 
+type EnrichedUser = {
+  id: number;
+  fullname: string;
+  email: string;
+  lastcourseaccess: number;
+  completed: boolean;
+  completionPercentage: number;
+};
+
+type CourseFilter = "all" | "never_accessed" | "not_completed";
+
 function SendByCourse() {
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
-  const [enrolledUsers, setEnrolledUsers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<EnrichedUser[]>([]);
+  const [filter, setFilter] = useState<CourseFilter>("all");
   const [message, setMessage] = useState("");
   const [searching, setSearching] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sending, setSending] = useState(false);
+
+  const filteredUsers = allUsers.filter((u) => {
+    if (filter === "never_accessed") return u.lastcourseaccess === 0;
+    if (filter === "not_completed") return u.lastcourseaccess > 0 && !u.completed;
+    return true;
+  });
 
   const handleSearch = async () => {
     if (!search.trim()) return;
@@ -103,17 +121,14 @@ function SendByCourse() {
 
   const selectCourse = async (course: any) => {
     setSelectedCourse(course);
-    setEnrolledUsers([]);
+    setAllUsers([]);
+    setFilter("all");
     const cfg = getConfig();
     if (!cfg) return;
     setLoadingUsers(true);
     try {
-      const enrolled = await callProxy(cfg, "get_enrolled_users", { courseId: course.id });
-      const students = (enrolled || []).filter((u: any) => {
-        const roles = (u.roles || []).map((r: any) => r.shortname);
-        return !roles.includes("editingteacher") && !roles.includes("teacher") && !roles.includes("manager");
-      });
-      setEnrolledUsers(students);
+      const enriched = await callProxy(cfg, "get_enrolled_users_with_completion", { courseId: course.id });
+      setAllUsers(enriched || []);
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -122,17 +137,17 @@ function SendByCourse() {
   };
 
   const handleSend = async () => {
-    if (!message.trim() || !enrolledUsers.length) return;
+    if (!message.trim() || !filteredUsers.length) return;
     const cfg = getConfig();
     if (!cfg) return;
     setSending(true);
     try {
-      const userIds = enrolledUsers.map((u: any) => u.id);
+      const userIds = filteredUsers.map((u) => u.id);
       const res = await callProxy(cfg, "send_message", { userIds, text: message });
       if (res?.hasErrors && res.errors?.length) {
         toast.warning(`Enviado con ${res.errors.length} errores: ${res.errors[0]}`);
       } else {
-        toast.success(`Mensaje enviado a ${userIds.length} estudiantes del curso.`);
+        toast.success(`Mensaje enviado a ${userIds.length} estudiantes.`);
       }
       setMessage("");
     } catch (e: any) {
@@ -142,11 +157,17 @@ function SendByCourse() {
     }
   };
 
+  const filterLabels: Record<CourseFilter, string> = {
+    all: "Todos",
+    never_accessed: "Sin ingresar",
+    not_completed: "No finalizados",
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Enviar mensaje por curso</CardTitle>
-        <CardDescription>Busca un curso y envía un mensaje a todos sus estudiantes.</CardDescription>
+        <CardDescription>Busca un curso y envía un mensaje a sus estudiantes.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
@@ -182,20 +203,46 @@ function SendByCourse() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{selectedCourse.fullname}</Badge>
-              <Button variant="ghost" size="sm" onClick={() => { setSelectedCourse(null); setEnrolledUsers([]); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setSelectedCourse(null); setAllUsers([]); setFilter("all"); }}>
                 Cambiar
               </Button>
             </div>
 
             {loadingUsers ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> Cargando estudiantes...
+                <Loader2 className="h-4 w-4 animate-spin" /> Cargando estudiantes y finalización...
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                <Users className="h-3.5 w-3.5 inline mr-1" />
-                {enrolledUsers.length} estudiantes encontrados
-              </p>
+              <>
+                <div className="flex gap-1.5 flex-wrap">
+                  {(Object.keys(filterLabels) as CourseFilter[]).map((key) => {
+                    const count = key === "all"
+                      ? allUsers.length
+                      : key === "never_accessed"
+                        ? allUsers.filter((u) => u.lastcourseaccess === 0).length
+                        : allUsers.filter((u) => u.lastcourseaccess > 0 && !u.completed).length;
+                    return (
+                      <Button
+                        key={key}
+                        variant={filter === key ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setFilter(key)}
+                        className="gap-1.5 text-xs"
+                      >
+                        {filterLabels[key]}
+                        <Badge variant={filter === key ? "secondary" : "outline"} className="ml-1 text-[10px] px-1.5 py-0">
+                          {count}
+                        </Badge>
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  <Users className="h-3.5 w-3.5 inline mr-1" />
+                  {filteredUsers.length} estudiantes seleccionados
+                </p>
+              </>
             )}
 
             <Textarea
@@ -205,9 +252,9 @@ function SendByCourse() {
               rows={4}
             />
 
-            <Button onClick={handleSend} disabled={sending || !message.trim() || !enrolledUsers.length} className="gap-2">
+            <Button onClick={handleSend} disabled={sending || !message.trim() || !filteredUsers.length} className="gap-2">
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Enviar a {enrolledUsers.length} estudiantes
+              Enviar a {filteredUsers.length} estudiantes
             </Button>
           </div>
         )}

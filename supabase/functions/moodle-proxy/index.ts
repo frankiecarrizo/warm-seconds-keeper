@@ -207,6 +207,41 @@ serve(async (req) => {
         break;
       }
 
+      // ── Enrolled users with completion info ────────────────────
+      case "get_enrolled_users_with_completion": {
+        const courseId = params?.courseId;
+        if (!courseId) throw { message: "Missing courseId", status: 400 };
+        const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
+          courseid: String(courseId),
+        });
+        const students = (enrolled || []).filter((u: any) => {
+          const roles = (u.roles || []).map((r: any) => r.shortname);
+          return !roles.includes("editingteacher") && !roles.includes("teacher") && !roles.includes("manager");
+        });
+
+        // Process in batches of 10
+        const enriched: any[] = [];
+        for (let i = 0; i < students.length; i += 10) {
+          const batch = students.slice(i, i + 10);
+          const results = await Promise.all(
+            batch.map(async (u: any) => {
+              const completion = await getCompletionForUser(courseId, u.id);
+              return {
+                id: u.id,
+                fullname: u.fullname,
+                email: u.email || "",
+                lastcourseaccess: u.lastcourseaccess || 0,
+                completed: completion.completed,
+                completionPercentage: completion.percentage,
+              };
+            })
+          );
+          enriched.push(...results);
+        }
+        result = enriched;
+        break;
+      }
+
       // ── Quiz attempt review ────────────────────────────────────
       case "get_quiz_attempt_review": {
         const attemptId = params?.attemptId;
