@@ -85,7 +85,7 @@ type EnrichedUser = {
   completionPercentage: number;
 };
 
-type CourseFilter = "all" | "never_accessed" | "not_completed";
+type CourseFilter = "all" | "never_accessed" | "not_completed" | "completed";
 
 function SendByCourse() {
   const [search, setSearch] = useState("");
@@ -101,6 +101,7 @@ function SendByCourse() {
   const filteredUsers = allUsers.filter((u) => {
     if (filter === "never_accessed") return u.lastcourseaccess === 0;
     if (filter === "not_completed") return u.lastcourseaccess > 0 && !u.completed;
+    if (filter === "completed") return u.completed;
     return true;
   });
 
@@ -161,6 +162,7 @@ function SendByCourse() {
     all: "Todos",
     never_accessed: "Sin ingresar",
     not_completed: "No finalizados",
+    completed: "Finalizados",
   };
 
   return (
@@ -220,7 +222,9 @@ function SendByCourse() {
                       ? allUsers.length
                       : key === "never_accessed"
                         ? allUsers.filter((u) => u.lastcourseaccess === 0).length
-                        : allUsers.filter((u) => u.lastcourseaccess > 0 && !u.completed).length;
+                        : key === "not_completed"
+                          ? allUsers.filter((u) => u.lastcourseaccess > 0 && !u.completed).length
+                          : allUsers.filter((u) => u.completed).length;
                     return (
                       <Button
                         key={key}
