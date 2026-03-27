@@ -416,13 +416,27 @@ serve(async (req) => {
           }
         }
 
-        const allStudentsBasic = students.map((s: any) => ({
-          id: s.id,
-          fullname: s.fullname,
-          email: s.email || "",
-          lastaccess: s.lastcourseaccess || s.lastaccess || 0,
-          completed: false,
-        }));
+        // Compute completion for ALL students in batches of 10
+        const allStudentsBasic: any[] = [];
+        const batchSize = 10;
+        for (let i = 0; i < students.length; i += batchSize) {
+          const batch = students.slice(i, i + batchSize);
+          const results = await Promise.all(
+            batch.map(async (s: any) => {
+              const completionResult = await getCompletionForUser(courseId, s.id);
+              return {
+                id: s.id,
+                fullname: s.fullname,
+                email: s.email || "",
+                lastaccess: s.lastcourseaccess || s.lastaccess || 0,
+                completed: completionResult.completed,
+                completionPercentage: completionResult.percentage,
+                completionMethod: completionResult.method,
+              };
+            })
+          );
+          allStudentsBasic.push(...results);
+        }
 
         // For detailed data, limit to first 50 students
         const detailedStudents = students.slice(0, 50);
