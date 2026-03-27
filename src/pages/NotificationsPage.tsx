@@ -87,6 +87,9 @@ type EnrichedUser = {
 
 type CourseFilter = "all" | "never_accessed" | "not_completed" | "completed";
 
+const NAMES_PER_ROW = 6;
+const VISIBLE_ROWS = 2;
+
 function SendByCourse() {
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState<any[]>([]);
@@ -97,6 +100,7 @@ function SendByCourse() {
   const [searching, setSearching] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showAllNames, setShowAllNames] = useState(false);
 
   const filteredUsers = allUsers.filter((u) => {
     if (filter === "never_accessed") return u.lastcourseaccess === 0;
