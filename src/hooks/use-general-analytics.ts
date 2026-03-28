@@ -10,10 +10,16 @@ import {
   getCategories,
   getCoursesEnrollmentSummary,
   getUsersSummary,
+  getLoginLogs,
   isTokenError,
 } from "@/lib/moodle-api";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
+
+export interface LoginLogEntry {
+  timecreated: number;
+  userid: number;
+}
 
 export interface GeneralData {
   siteInfo: SiteInfo;
@@ -21,6 +27,7 @@ export interface GeneralData {
   categories: MoodleCategory[];
   enrollmentSummaries: CourseEnrollmentSummary[];
   usersSummary: UsersSummary | null;
+  loginLogs: LoginLogEntry[];
 }
 
 export function useGeneralAnalytics() {
@@ -81,7 +88,14 @@ export function useGeneralAnalytics() {
       // Filter out site-level course (id=1)
       const filteredCourses = courses.filter((c: any) => c.id !== 1);
 
-      setData({ siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary });
+      setData({ siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary, loginLogs: [] });
+
+      // Fetch login logs in parallel with enrollment
+      getLoginLogs(cfg).then((logs: LoginLogEntry[]) => {
+        setData((prev) => prev ? { ...prev, loginLogs: logs || [] } : prev);
+      }).catch((e: any) => {
+        console.warn("Login logs fetch failed:", e.message);
+      });
 
       setEnrollmentLoading(true);
       const courseIds = filteredCourses.map((c: any) => c.id);
