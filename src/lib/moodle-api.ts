@@ -212,6 +212,10 @@ export const getCoursesEnrollmentSummary = async (
   return callProxy(config, "get_courses_enrollment_summary", { courseIds });
 };
 
+export const getLoginLogs = async (config: MoodleConfig) => {
+  return callProxy(config, "get_login_logs");
+};
+
 // ═══════════════════════════════════════════════════════════════
 // Missing types referenced by hooks/components
 // ═══════════════════════════════════════════════════════════════

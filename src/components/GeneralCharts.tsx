@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { BookOpen, FolderTree, GripVertical } from "lucide-react";
+import { ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { BookOpen, FolderTree, GripVertical, TrendingUp, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSwapy, type WidgetConfig } from "@/hooks/use-swapy";
 import { WidgetManager } from "@/components/WidgetManager";
+import type { LoginLogEntry } from "@/hooks/use-general-analytics";
 
 const COLORS = [
   "hsl(172, 66%, 50%)",
@@ -31,6 +32,7 @@ interface GeneralChartsProps {
   courses: any[];
   summaryMap: Map<number, any>;
   formatDate: (ts: number) => string;
+  loginLogs: LoginLogEntry[];
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
@@ -38,6 +40,8 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "completion-donut", label: "Finalización Global", visible: true },
   { id: "user-status", label: "Estado de Usuarios", visible: true },
   { id: "access-donut", label: "Acceso a la Plataforma", visible: true },
+  { id: "logins-by-month", label: "Ingresos por Mes", visible: true },
+  { id: "heatmap", label: "Mapa de Calor", visible: true },
   { id: "top-completions", label: "Top 5 — Finalizaciones", visible: true },
   { id: "categories", label: "Cursos por Categoría", visible: true },
   { id: "all-courses", label: "Todos los Cursos", visible: true },
@@ -56,13 +60,55 @@ export function GeneralCharts({
   courses,
   summaryMap,
   formatDate,
+  loginLogs,
 }: GeneralChartsProps) {
   const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout } = useSwapy({
     storageKey: "general-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
   });
 
-  const fullWidthIds = new Set(["top-completions", "categories", "all-courses"]);
+  const fullWidthIds = new Set(["top-completions", "categories", "all-courses", "logins-by-month", "heatmap"]);
+
+  // Logins by month data
+  const loginsByMonth = useMemo(() => {
+    if (!loginLogs.length) return [];
+    const months = new Map<string, number>();
+    loginLogs.forEach((l) => {
+      const d = new Date(l.timecreated * 1000);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.set(key, (months.get(key) || 0) + 1);
+    });
+    return Array.from(months.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, count]) => {
+        const [y, m] = month.split("-");
+        const label = new Date(Number(y), Number(m) - 1).toLocaleDateString("es", { month: "short", year: "2-digit" });
+        return { month: label, ingresos: count };
+      });
+  }, [loginLogs]);
+
+  // Heatmap data: day of week × hour
+  const heatmapData = useMemo(() => {
+    if (!loginLogs.length) return { grid: [] as { day: number; hour: number; count: number }[], maxCount: 0 };
+    const grid = new Map<string, number>();
+    loginLogs.forEach((l) => {
+      const d = new Date(l.timecreated * 1000);
+      const day = d.getDay(); // 0=Sun...6=Sat
+      const hour = d.getHours();
+      const key = `${day}-${hour}`;
+      grid.set(key, (grid.get(key) || 0) + 1);
+    });
+    let maxCount = 0;
+    const cells: { day: number; hour: number; count: number }[] = [];
+    for (let day = 0; day < 7; day++) {
+      for (let hour = 0; hour < 24; hour++) {
+        const count = grid.get(`${day}-${hour}`) || 0;
+        if (count > maxCount) maxCount = count;
+        cells.push({ day, hour, count });
+      }
+    }
+    return { grid: cells, maxCount };
+  }, [loginLogs]);
 
   const renderWidget = (id: string) => {
     switch (id) {
@@ -209,6 +255,123 @@ export function GeneralCharts({
             </CardContent>
           </Card>
         );
+
+      case "logins-by-month":
+        if (loginsByMonth.length === 0) return null;
+        return (
+          <Card className="glass-card">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Ingresos por Mes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 pb-5">
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={loginsByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                      color: "hsl(var(--popover-foreground))",
+                      fontSize: 12,
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="ingresos"
+                    stroke="hsl(172, 66%, 50%)"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "hsl(172, 66%, 50%)" }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        );
+
+      case "heatmap": {
+        if (heatmapData.grid.length === 0 || heatmapData.maxCount === 0) return null;
+        const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+        const getHeatColor = (count: number) => {
+          if (count === 0) return "hsl(var(--muted))";
+          const intensity = Math.min(count / heatmapData.maxCount, 1);
+          // From light teal to deep teal
+          const lightness = 85 - intensity * 55;
+          const saturation = 30 + intensity * 40;
+          return `hsl(172, ${saturation}%, ${lightness}%)`;
+        };
+        return (
+          <Card className="glass-card">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
+                <Flame className="h-4 w-4 text-warning" />
+                Mapa de Calor — Días y Horarios
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 pb-5 overflow-x-auto">
+              <div className="min-w-[600px]">
+                {/* Hour labels */}
+                <div className="flex mb-1 ml-10">
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <div key={h} className="flex-1 text-center text-[9px] text-muted-foreground">
+                      {h}
+                    </div>
+                  ))}
+                </div>
+                {/* Grid rows */}
+                {[1, 2, 3, 4, 5, 6, 0].map((dayIdx) => (
+                  <div key={dayIdx} className="flex items-center gap-1 mb-0.5">
+                    <span className="w-9 text-[10px] text-muted-foreground text-right shrink-0">
+                      {dayNames[dayIdx]}
+                    </span>
+                    <div className="flex flex-1 gap-px">
+                      {Array.from({ length: 24 }, (_, h) => {
+                        const cell = heatmapData.grid.find((c) => c.day === dayIdx && c.hour === h);
+                        const count = cell?.count || 0;
+                        return (
+                          <div
+                            key={h}
+                            className="flex-1 aspect-square rounded-sm relative group cursor-default"
+                            style={{ backgroundColor: getHeatColor(count), minHeight: 16 }}
+                          >
+                            {count > 0 && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 whitespace-nowrap">
+                                <div className="bg-popover text-popover-foreground text-xs rounded-md px-2 py-1 shadow-md border border-border">
+                                  {dayNames[dayIdx]} {h}:00 — {count} ingresos
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {/* Legend */}
+                <div className="flex items-center gap-2 mt-3 ml-10">
+                  <span className="text-[10px] text-muted-foreground">Menos</span>
+                  {[0, 0.25, 0.5, 0.75, 1].map((i) => (
+                    <div
+                      key={i}
+                      className="w-4 h-4 rounded-sm"
+                      style={{ backgroundColor: i === 0 ? "hsl(var(--muted))" : `hsl(172, ${30 + i * 40}%, ${85 - i * 55}%)` }}
+                    />
+                  ))}
+                  <span className="text-[10px] text-muted-foreground">Más</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      }
 
       case "top-completions":
         if (completionChartData.length === 0) return null;
