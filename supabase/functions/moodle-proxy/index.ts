@@ -654,6 +654,80 @@ serve(async (req) => {
         break;
       }
 
+      // ── Get login logs for charts ──────────────────────────────
+      case "get_login_logs": {
+        // Use report_log_get_log_records to fetch login events
+        // We'll get logs for the last 12 months
+        const now = Math.floor(Date.now() / 1000);
+        const twelveMonthsAgo = now - (365 * 24 * 60 * 60);
+        
+        let allLogs: any[] = [];
+        let page = 0;
+        const perPage = 500;
+        let hasMore = true;
+        
+        while (hasMore) {
+          try {
+            const logsData = await callMoodle("report_log_get_log_records", {
+              courseid: "0",
+              "filters[eventname]": String.raw`\core\event\user_loggedin`,
+              "filters[timecreated]": String(twelveMonthsAgo),
+              page: String(page),
+              perpage: String(perPage),
+              orderby: "timecreated DESC",
+            });
+            
+            const records = logsData?.data || [];
+            allLogs.push(...records);
+            
+            if (records.length < perPage) {
+              hasMore = false;
+            } else {
+              page++;
+              // Safety limit
+              if (page > 20) hasMore = false;
+            }
+          } catch (e: any) {
+            // If report_log is not available, try fallback with user lastaccess
+            console.warn("report_log not available, using fallback:", e.message);
+            
+            // Fallback: get all users with their firstaccess/lastaccess
+            let users: any[] = [];
+            try {
+              const res = await callMoodle("core_user_get_users", {
+                "criteria[0][key]": "email",
+                "criteria[0][value]": "%@%",
+              });
+              users = (res.users || []).filter((u: any) => u.id > 1 && u.username !== "guest" && !u.deleted);
+            } catch {}
+            
+            // Build synthetic login entries from firstaccess and lastaccess
+            allLogs = users
+              .filter((u: any) => u.lastaccess > 0)
+              .map((u: any) => ({
+                timecreated: u.lastaccess,
+                userid: u.id,
+              }));
+            
+            // Also add firstaccess as separate entry if different
+            users.forEach((u: any) => {
+              if (u.firstaccess > 0 && u.firstaccess !== u.lastaccess) {
+                allLogs.push({ timecreated: u.firstaccess, userid: u.id });
+              }
+            });
+            
+            hasMore = false;
+          }
+        }
+        
+        // Return raw timestamps for client-side aggregation
+        result = allLogs.map((l: any) => ({
+          timecreated: l.timecreated,
+          userid: l.userid || 0,
+        }));
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Unknown action: ${action}` }),
