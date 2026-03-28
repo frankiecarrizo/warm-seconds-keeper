@@ -67,7 +67,48 @@ export function GeneralCharts({
     defaultWidgets: DEFAULT_WIDGETS,
   });
 
-  const fullWidthIds = new Set(["top-completions", "categories", "all-courses"]);
+  const fullWidthIds = new Set(["top-completions", "categories", "all-courses", "logins-by-month", "heatmap"]);
+
+  // Logins by month data
+  const loginsByMonth = useMemo(() => {
+    if (!loginLogs.length) return [];
+    const months = new Map<string, number>();
+    loginLogs.forEach((l) => {
+      const d = new Date(l.timecreated * 1000);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.set(key, (months.get(key) || 0) + 1);
+    });
+    return Array.from(months.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, count]) => {
+        const [y, m] = month.split("-");
+        const label = new Date(Number(y), Number(m) - 1).toLocaleDateString("es", { month: "short", year: "2-digit" });
+        return { month: label, ingresos: count };
+      });
+  }, [loginLogs]);
+
+  // Heatmap data: day of week × hour
+  const heatmapData = useMemo(() => {
+    if (!loginLogs.length) return { grid: [] as { day: number; hour: number; count: number }[], maxCount: 0 };
+    const grid = new Map<string, number>();
+    loginLogs.forEach((l) => {
+      const d = new Date(l.timecreated * 1000);
+      const day = d.getDay(); // 0=Sun...6=Sat
+      const hour = d.getHours();
+      const key = `${day}-${hour}`;
+      grid.set(key, (grid.get(key) || 0) + 1);
+    });
+    let maxCount = 0;
+    const cells: { day: number; hour: number; count: number }[] = [];
+    for (let day = 0; day < 7; day++) {
+      for (let hour = 0; hour < 24; hour++) {
+        const count = grid.get(`${day}-${hour}`) || 0;
+        if (count > maxCount) maxCount = count;
+        cells.push({ day, hour, count });
+      }
+    }
+    return { grid: cells, maxCount };
+  }, [loginLogs]);
 
   const renderWidget = (id: string) => {
     switch (id) {
