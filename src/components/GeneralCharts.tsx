@@ -256,6 +256,123 @@ export function GeneralCharts({
           </Card>
         );
 
+      case "logins-by-month":
+        if (loginsByMonth.length === 0) return null;
+        return (
+          <Card className="glass-card">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Ingresos por Mes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 pb-5">
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={loginsByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: 8,
+                      color: "hsl(var(--popover-foreground))",
+                      fontSize: 12,
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="ingresos"
+                    stroke="hsl(172, 66%, 50%)"
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: "hsl(172, 66%, 50%)" }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        );
+
+      case "heatmap": {
+        if (heatmapData.grid.length === 0 || heatmapData.maxCount === 0) return null;
+        const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+        const getHeatColor = (count: number) => {
+          if (count === 0) return "hsl(var(--muted))";
+          const intensity = Math.min(count / heatmapData.maxCount, 1);
+          // From light teal to deep teal
+          const lightness = 85 - intensity * 55;
+          const saturation = 30 + intensity * 40;
+          return `hsl(172, ${saturation}%, ${lightness}%)`;
+        };
+        return (
+          <Card className="glass-card">
+            <CardHeader className="pb-0">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
+                <Flame className="h-4 w-4 text-warning" />
+                Mapa de Calor — Días y Horarios
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 pb-5 overflow-x-auto">
+              <div className="min-w-[600px]">
+                {/* Hour labels */}
+                <div className="flex mb-1 ml-10">
+                  {Array.from({ length: 24 }, (_, h) => (
+                    <div key={h} className="flex-1 text-center text-[9px] text-muted-foreground">
+                      {h}
+                    </div>
+                  ))}
+                </div>
+                {/* Grid rows */}
+                {[1, 2, 3, 4, 5, 6, 0].map((dayIdx) => (
+                  <div key={dayIdx} className="flex items-center gap-1 mb-0.5">
+                    <span className="w-9 text-[10px] text-muted-foreground text-right shrink-0">
+                      {dayNames[dayIdx]}
+                    </span>
+                    <div className="flex flex-1 gap-px">
+                      {Array.from({ length: 24 }, (_, h) => {
+                        const cell = heatmapData.grid.find((c) => c.day === dayIdx && c.hour === h);
+                        const count = cell?.count || 0;
+                        return (
+                          <div
+                            key={h}
+                            className="flex-1 aspect-square rounded-sm relative group cursor-default"
+                            style={{ backgroundColor: getHeatColor(count), minHeight: 16 }}
+                          >
+                            {count > 0 && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 whitespace-nowrap">
+                                <div className="bg-popover text-popover-foreground text-xs rounded-md px-2 py-1 shadow-md border border-border">
+                                  {dayNames[dayIdx]} {h}:00 — {count} ingresos
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {/* Legend */}
+                <div className="flex items-center gap-2 mt-3 ml-10">
+                  <span className="text-[10px] text-muted-foreground">Menos</span>
+                  {[0, 0.25, 0.5, 0.75, 1].map((i) => (
+                    <div
+                      key={i}
+                      className="w-4 h-4 rounded-sm"
+                      style={{ backgroundColor: i === 0 ? "hsl(var(--muted))" : `hsl(172, ${30 + i * 40}%, ${85 - i * 55}%)` }}
+                    />
+                  ))}
+                  <span className="text-[10px] text-muted-foreground">Más</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      }
+
       case "top-completions":
         if (completionChartData.length === 0) return null;
         return (
