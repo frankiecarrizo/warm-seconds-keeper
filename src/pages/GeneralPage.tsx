@@ -328,6 +328,7 @@ const GeneralPage = () => {
             courses={courses}
             summaryMap={summaryMap}
             formatDate={formatDate}
+            loginLogs={data.loginLogs || []}
           />
         )}
       </div>
