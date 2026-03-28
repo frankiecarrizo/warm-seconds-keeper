@@ -3,11 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { BookOpen, FolderTree, GripVertical } from "lucide-react";
+import { ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { BookOpen, FolderTree, GripVertical, TrendingUp, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import { useSwapy, type WidgetConfig } from "@/hooks/use-swapy";
 import { WidgetManager } from "@/components/WidgetManager";
+import type { LoginLogEntry } from "@/hooks/use-general-analytics";
 
 const COLORS = [
   "hsl(172, 66%, 50%)",
@@ -31,6 +32,7 @@ interface GeneralChartsProps {
   courses: any[];
   summaryMap: Map<number, any>;
   formatDate: (ts: number) => string;
+  loginLogs: LoginLogEntry[];
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
@@ -38,6 +40,8 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "completion-donut", label: "Finalización Global", visible: true },
   { id: "user-status", label: "Estado de Usuarios", visible: true },
   { id: "access-donut", label: "Acceso a la Plataforma", visible: true },
+  { id: "logins-by-month", label: "Ingresos por Mes", visible: true },
+  { id: "heatmap", label: "Mapa de Calor", visible: true },
   { id: "top-completions", label: "Top 5 — Finalizaciones", visible: true },
   { id: "categories", label: "Cursos por Categoría", visible: true },
   { id: "all-courses", label: "Todos los Cursos", visible: true },
@@ -56,6 +60,7 @@ export function GeneralCharts({
   courses,
   summaryMap,
   formatDate,
+  loginLogs,
 }: GeneralChartsProps) {
   const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout } = useSwapy({
     storageKey: "general-charts-layout",
