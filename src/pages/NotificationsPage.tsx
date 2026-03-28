@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Send, Users, BookOpen, User, Search, Loader2, CheckCircle2 } from "lucide-react";
+import { Send, Users, BookOpen, User, Search, Loader2, CheckCircle2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { searchUsers, searchCourses, MoodleUser, MoodleConfig } from "@/lib/moodle-api";
 
@@ -101,8 +101,10 @@ function SendByCourse() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sending, setSending] = useState(false);
   const [showAllNames, setShowAllNames] = useState(false);
+  const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
 
   const filteredUsers = allUsers.filter((u) => {
+    if (excludedIds.has(u.id)) return false;
     if (filter === "never_accessed") return u.lastcourseaccess === 0;
     if (filter === "not_completed") return u.lastcourseaccess > 0 && !u.completed;
     if (filter === "completed") return u.completed;
@@ -209,7 +211,7 @@ function SendByCourse() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Badge variant="secondary">{selectedCourse.fullname}</Badge>
-              <Button variant="ghost" size="sm" onClick={() => { setSelectedCourse(null); setAllUsers([]); setFilter("all"); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setSelectedCourse(null); setAllUsers([]); setFilter("all"); setExcludedIds(new Set()); }}>
                 Cambiar
               </Button>
             </div>
@@ -234,7 +236,7 @@ function SendByCourse() {
                         key={key}
                         variant={filter === key ? "default" : "outline"}
                         size="sm"
-                        onClick={() => { setFilter(key); setShowAllNames(false); }}
+                        onClick={() => { setFilter(key); setShowAllNames(false); setExcludedIds(new Set()); }}
                         className="gap-1.5 text-xs"
                       >
                         {filterLabels[key]}
@@ -255,8 +257,15 @@ function SendByCourse() {
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-1.5">
                       {(showAllNames ? filteredUsers : filteredUsers.slice(0, NAMES_PER_ROW * VISIBLE_ROWS)).map((u) => (
-                        <Badge key={u.id} variant="outline" className="text-xs font-normal">
+                        <Badge key={u.id} variant="outline" className="text-xs font-normal pr-1 flex items-center gap-1">
                           {u.fullname}
+                          <button
+                            onClick={() => setExcludedIds((prev) => new Set([...prev, u.id]))}
+                            className="rounded-full hover:bg-muted p-0.5 transition-colors"
+                            aria-label={`Quitar ${u.fullname}`}
+                          >
+                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                          </button>
                         </Badge>
                       ))}
                     </div>
