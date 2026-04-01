@@ -99,11 +99,18 @@ export function useGeneralAnalytics() {
       // Filter out site-level course (id=1)
       const filteredCourses = courses.filter((c: any) => c.id !== 1);
 
-      setData({ siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary, loginLogs: [] });
+      const initialGeneralData: GeneralData = { siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary, loginLogs: [] };
+      cachedData = initialGeneralData;
+      cachedForUrl = cfg.moodleUrl;
+      setData(initialGeneralData);
 
       // Fetch login logs in parallel with enrollment
       getLoginLogs(cfg).then((logs: LoginLogEntry[]) => {
-        setData((prev) => prev ? { ...prev, loginLogs: logs || [] } : prev);
+        setData((prev) => {
+          const updated = prev ? { ...prev, loginLogs: logs || [] } : prev;
+          if (updated) { cachedData = updated; }
+          return updated;
+        });
       }).catch((e: any) => {
         console.warn("Login logs fetch failed:", e.message);
       });
