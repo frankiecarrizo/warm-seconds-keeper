@@ -439,6 +439,9 @@ const GeneralPage = () => {
           )}
         </motion.div>
 
+        {/* AI Analysis */}
+        <AIAnalysis analysis={aiAnalysis} loading={aiLoading} />
+
         {/* Charts — lazy loaded after all data is ready */}
         {enrollmentLoading ? (
           <ChartsSkeleton />
