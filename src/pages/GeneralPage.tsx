@@ -332,6 +332,10 @@ const GeneralPage = () => {
                     <FileText className="h-4 w-4 mr-1" />
                     PDF
                   </Button>
+                  <Button variant="outline" size="sm" onClick={handleAIAnalysis} disabled={aiLoading || enrollmentLoading || !chartData} title="Analizar con IA">
+                    <Brain className={`h-4 w-4 mr-1 ${aiLoading ? "animate-pulse" : ""}`} />
+                    IA
+                  </Button>
                 </div>
               </div>
             </CardContent>
