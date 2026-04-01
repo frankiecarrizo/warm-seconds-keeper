@@ -139,6 +139,7 @@ export function useGeneralAnalytics() {
     data,
     loading,
     enrollmentLoading,
+    enrollmentProgress,
     error,
     setError,
     fetchGeneralData,
