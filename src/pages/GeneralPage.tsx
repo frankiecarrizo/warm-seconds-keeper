@@ -149,6 +149,82 @@ const GeneralPage = () => {
     return new Date(ts * 1000).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  const handleAIAnalysis = async () => {
+    if (!data || !chartData) return;
+    setAiAnalysis("");
+    setAiLoading(true);
+    try {
+      const generalData = {
+        siteName: data.siteInfo.sitename,
+        siteUrl: data.siteInfo.siteurl,
+        moodleVersion: data.siteInfo.release || data.siteInfo.version,
+        totalCourses: courses.length,
+        totalUsers: usersSummary?.total || 0,
+        activeUsers: usersSummary?.active || 0,
+        suspendedUsers: usersSummary?.suspended || 0,
+        deletedUsers: usersSummary?.deleted || 0,
+        totalStudentEnrollments: stats.totalStudents,
+        totalTeachers: stats.totalTeachers,
+        totalCompleted: stats.totalCompleted,
+        completionRate: stats.completionRate,
+        neverAccessedRate: stats.neverAccessedRate,
+        totalAccessed: stats.totalAccessed,
+        topCoursesByEnrollment: chartData.enrollmentChartData,
+        topCoursesByCompletion: chartData.completionChartData,
+        categorySummary: categoryChartData,
+        loginLogsCount: data.loginLogs?.length || 0,
+      };
+
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-general`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ generalData }),
+      });
+
+      if (!resp.ok || !resp.body) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || "Error al analizar");
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIdx: number;
+        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIdx);
+          buffer = buffer.slice(newlineIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullText += content;
+              setAiAnalysis(fullText);
+            }
+          } catch {}
+        }
+      }
+    } catch (e: any) {
+      console.error("AI analysis error:", e);
+      toast.error(e.message || "Error al generar análisis con IA");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const StatSkeleton = () => (
     <Card className="glass-card">
       <CardContent className="p-4 text-center space-y-2">
