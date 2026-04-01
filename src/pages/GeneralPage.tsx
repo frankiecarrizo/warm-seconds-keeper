@@ -117,65 +117,79 @@ const GeneralPage = () => {
 
   const { siteInfo, courses, categories, enrollmentSummaries, usersSummary } = data;
 
-  // Aggregated stats
-  const totalStudents = enrollmentSummaries.reduce((s, e) => s + e.totalStudents, 0);
-  const uniqueTeacherIds = new Set(enrollmentSummaries.flatMap((e: any) => e.teacherIds || []));
-  const totalTeachers = uniqueTeacherIds.size;
-  const totalEnrolled = enrollmentSummaries.reduce((s, e) => s + e.totalEnrolled, 0);
-  const totalCompleted = enrollmentSummaries.reduce((s, e) => s + e.completed, 0);
-  const totalChecked = enrollmentSummaries.reduce((s, e) => s + e.checkedStudents, 0);
-  const totalNeverAccessed = enrollmentSummaries.reduce((s, e) => s + e.neverAccessed, 0);
-  const completionRate = totalChecked > 0 ? Math.round((totalCompleted / totalChecked) * 100) : 0;
-  const neverAccessedRate = totalStudents > 0 ? Math.round((totalNeverAccessed / totalStudents) * 100) : 0;
-  const totalAccessed = totalStudents - totalNeverAccessed;
+  const dataReady = !enrollmentLoading && enrollmentSummaries.length > 0;
 
-  // Unique students/teachers (approximate since same user can be in multiple courses)
-  const summaryMap = new Map(enrollmentSummaries.map((s) => [s.courseId, s]));
+  // Aggregated stats — memoized to avoid recalc on unrelated renders
+  const stats = useMemo(() => {
+    const totalStudents = enrollmentSummaries.reduce((s, e) => s + e.totalStudents, 0);
+    const uniqueTeacherIds = new Set(enrollmentSummaries.flatMap((e: any) => e.teacherIds || []));
+    const totalTeachers = uniqueTeacherIds.size;
+    const totalCompleted = enrollmentSummaries.reduce((s, e) => s + e.completed, 0);
+    const totalChecked = enrollmentSummaries.reduce((s, e) => s + e.checkedStudents, 0);
+    const totalNeverAccessed = enrollmentSummaries.reduce((s, e) => s + e.neverAccessed, 0);
+    const completionRate = totalChecked > 0 ? Math.round((totalCompleted / totalChecked) * 100) : 0;
+    const neverAccessedRate = totalStudents > 0 ? Math.round((totalNeverAccessed / totalStudents) * 100) : 0;
+    const totalAccessed = totalStudents - totalNeverAccessed;
+    return { totalStudents, totalTeachers, totalCompleted, totalChecked, totalNeverAccessed, completionRate, neverAccessedRate, totalAccessed };
+  }, [enrollmentSummaries]);
 
-  // Chart data: top 5 courses by enrollment
-  const enrollmentChartData = courses
-    .map((c) => {
-      const s = summaryMap.get(c.id);
-      return { name: c.shortname || c.fullname.slice(0, 25), estudiantes: s?.totalStudents || 0, docentes: s?.totalTeachers || 0 };
-    })
-    .filter((d) => d.estudiantes > 0 || d.docentes > 0)
-    .sort((a, b) => b.estudiantes - a.estudiantes)
-    .slice(0, 5);
+  // Chart data — only computed when enrollment is done
+  const chartData = useMemo(() => {
+    if (!dataReady) return null;
+    const summaryMap = new Map(enrollmentSummaries.map((s) => [s.courseId, s]));
 
-  // Chart data: top 5 courses by completions
-  const completionChartData = courses
-    .map((c) => {
-      const s = summaryMap.get(c.id);
-      return { name: c.fullname.length > 40 ? c.fullname.slice(0, 40) + "…" : c.fullname, finalizaciones: s?.completed || 0 };
-    })
-    .filter((d) => d.finalizaciones > 0)
-    .sort((a, b) => b.finalizaciones - a.finalizaciones)
-    .slice(0, 5);
+    const enrollmentChartData = courses
+      .map((c) => {
+        const s = summaryMap.get(c.id);
+        return { name: c.fullname.length > 40 ? c.fullname.slice(0, 40) + "…" : c.fullname, estudiantes: s?.totalStudents || 0, docentes: s?.totalTeachers || 0 };
+      })
+      .filter((d) => d.estudiantes > 0 || d.docentes > 0)
+      .sort((a, b) => b.estudiantes - a.estudiantes)
+      .slice(0, 5);
 
-  // Completion pie
-  const completionPieData = [
-    { name: "Finalizaron", value: totalCompleted },
-    { name: "Sin finalizar", value: totalChecked - totalCompleted },
-    { name: "Sin datos", value: totalStudents - totalChecked },
-  ].filter((d) => d.value > 0);
+    const completionChartData = courses
+      .map((c) => {
+        const s = summaryMap.get(c.id);
+        return { name: c.fullname.length > 40 ? c.fullname.slice(0, 40) + "…" : c.fullname, finalizaciones: s?.completed || 0 };
+      })
+      .filter((d) => d.finalizaciones > 0)
+      .sort((a, b) => b.finalizaciones - a.finalizaciones)
+      .slice(0, 5);
 
-  // Access pie
-  const accessPieData = [
-    { name: "Ingresaron", value: totalStudents - totalNeverAccessed },
-    { name: "Nunca ingresaron", value: totalNeverAccessed },
-  ].filter((d) => d.value > 0);
+    const completionPieData = [
+      { name: "Finalizaron", value: stats.totalCompleted },
+      { name: "Sin finalizar", value: stats.totalChecked - stats.totalCompleted },
+      { name: "Sin datos", value: stats.totalStudents - stats.totalChecked },
+    ].filter((d) => d.value > 0);
 
-  // User status pie
-  const userStatusPieData = usersSummary ? [
-    { name: "Activos", value: usersSummary.active },
-    { name: "Suspendidos", value: usersSummary.suspended },
-    { name: "Eliminados", value: usersSummary.deleted },
-  ].filter((d) => d.value > 0) : [];
+    const accessPieData = [
+      { name: "Ingresaron", value: stats.totalStudents - stats.totalNeverAccessed },
+      { name: "Nunca ingresaron", value: stats.totalNeverAccessed },
+    ].filter((d) => d.value > 0);
+
+    const userStatusPieData = usersSummary ? [
+      { name: "Activos", value: usersSummary.active },
+      { name: "Suspendidos", value: usersSummary.suspended },
+      { name: "Eliminados", value: usersSummary.deleted },
+    ].filter((d) => d.value > 0) : [];
+
+    return { enrollmentChartData, completionChartData, completionPieData, accessPieData, userStatusPieData, summaryMap };
+  }, [dataReady, enrollmentSummaries, courses, usersSummary, stats]);
 
   const formatDate = (ts: number) => {
     if (!ts) return "—";
     return new Date(ts * 1000).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
   };
+
+  const StatSkeleton = () => (
+    <Card className="glass-card">
+      <CardContent className="p-4 text-center space-y-2">
+        <Skeleton className="h-5 w-5 mx-auto rounded-full" />
+        <Skeleton className="h-7 w-12 mx-auto" />
+        <Skeleton className="h-3 w-16 mx-auto" />
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="min-h-full bg-background">
