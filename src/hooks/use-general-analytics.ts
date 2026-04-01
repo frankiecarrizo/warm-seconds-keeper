@@ -35,6 +35,7 @@ export function useGeneralAnalytics() {
   const [data, setData] = useState<GeneralData | null>(null);
   const [loading, setLoading] = useState(false);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
+  const [enrollmentProgress, setEnrollmentProgress] = useState<{ completed: number; total: number }>({ completed: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
 
   const handleTokenError = useCallback((e: any): boolean => {
