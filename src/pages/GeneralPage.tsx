@@ -30,6 +30,8 @@ const GeneralPage = () => {
   } = useGeneralAnalytics();
 
   const { connect, disconnect, configUrl } = useMoodleConnection();
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Build category map and tree data for chart
   const categoryMap = useMemo(() => {
