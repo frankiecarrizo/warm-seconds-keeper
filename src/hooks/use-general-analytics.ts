@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   SiteInfo,
   BasicCourse,
@@ -30,9 +30,19 @@ export interface GeneralData {
   loginLogs: LoginLogEntry[];
 }
 
+// Module-level cache so data survives tab switches
+let cachedData: GeneralData | null = null;
+let cachedForUrl: string | null = null;
+
 export function useGeneralAnalytics() {
   const { isConnected, disconnect } = useMoodleConnection();
-  const [data, setData] = useState<GeneralData | null>(null);
+
+  // Initialize from cache if available and same Moodle URL
+  const savedCfg = localStorage.getItem("moodle-config");
+  const currentUrl = savedCfg ? JSON.parse(savedCfg).moodleUrl : null;
+  const initialData = (cachedData && cachedForUrl === currentUrl) ? cachedData : null;
+
+  const [data, setData] = useState<GeneralData | null>(initialData);
   const [loading, setLoading] = useState(false);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
   const [enrollmentProgress, setEnrollmentProgress] = useState<{ completed: number; total: number }>({ completed: 0, total: 0 });
@@ -89,11 +99,18 @@ export function useGeneralAnalytics() {
       // Filter out site-level course (id=1)
       const filteredCourses = courses.filter((c: any) => c.id !== 1);
 
-      setData({ siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary, loginLogs: [] });
+      const initialGeneralData: GeneralData = { siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary, loginLogs: [] };
+      cachedData = initialGeneralData;
+      cachedForUrl = cfg.moodleUrl;
+      setData(initialGeneralData);
 
       // Fetch login logs in parallel with enrollment
       getLoginLogs(cfg).then((logs: LoginLogEntry[]) => {
-        setData((prev) => prev ? { ...prev, loginLogs: logs || [] } : prev);
+        setData((prev) => {
+          const updated = prev ? { ...prev, loginLogs: logs || [] } : prev;
+          if (updated) { cachedData = updated; }
+          return updated;
+        });
       }).catch((e: any) => {
         console.warn("Login logs fetch failed:", e.message);
       });
@@ -121,9 +138,11 @@ export function useGeneralAnalytics() {
       }
 
       // Single state update with all summaries at once
-      setData((prev) =>
-        prev ? { ...prev, enrollmentSummaries: allSummaries } : prev
-      );
+      setData((prev) => {
+        const updated = prev ? { ...prev, enrollmentSummaries: allSummaries } : prev;
+        if (updated) { cachedData = updated; }
+        return updated;
+      });
       setEnrollmentLoading(false);
     } catch (e: any) {
       if (!handleTokenError(e)) {

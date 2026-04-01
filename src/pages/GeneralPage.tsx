@@ -1,5 +1,5 @@
-import { useEffect, useMemo, lazy, Suspense } from "react";
-import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet } from "lucide-react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
+import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet, Brain } from "lucide-react";
 import { exportGeneralToCSV, exportGeneralToPDF } from "@/lib/export-utils";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGeneralAnalytics } from "@/hooks/use-general-analytics";
 import { motion, AnimatePresence } from "framer-motion";
+import { AIAnalysis } from "@/components/AIAnalysis";
+import { toast } from "sonner";
 
 const GeneralCharts = lazy(() => import("@/components/GeneralCharts").then(m => ({ default: m.GeneralCharts })));
 
@@ -28,6 +30,8 @@ const GeneralPage = () => {
   } = useGeneralAnalytics();
 
   const { connect, disconnect, configUrl } = useMoodleConnection();
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Build category map and tree data for chart
   const categoryMap = useMemo(() => {
@@ -145,6 +149,82 @@ const GeneralPage = () => {
     return new Date(ts * 1000).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  const handleAIAnalysis = async () => {
+    if (!data || !chartData) return;
+    setAiAnalysis("");
+    setAiLoading(true);
+    try {
+      const generalData = {
+        siteName: data.siteInfo.sitename,
+        siteUrl: data.siteInfo.siteurl,
+        moodleVersion: data.siteInfo.release || data.siteInfo.version,
+        totalCourses: courses.length,
+        totalUsers: usersSummary?.total || 0,
+        activeUsers: usersSummary?.active || 0,
+        suspendedUsers: usersSummary?.suspended || 0,
+        deletedUsers: usersSummary?.deleted || 0,
+        totalStudentEnrollments: stats.totalStudents,
+        totalTeachers: stats.totalTeachers,
+        totalCompleted: stats.totalCompleted,
+        completionRate: stats.completionRate,
+        neverAccessedRate: stats.neverAccessedRate,
+        totalAccessed: stats.totalAccessed,
+        topCoursesByEnrollment: chartData.enrollmentChartData,
+        topCoursesByCompletion: chartData.completionChartData,
+        categorySummary: categoryChartData,
+        loginLogsCount: data.loginLogs?.length || 0,
+      };
+
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-general`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ generalData }),
+      });
+
+      if (!resp.ok || !resp.body) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || "Error al analizar");
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIdx: number;
+        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIdx);
+          buffer = buffer.slice(newlineIdx + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              fullText += content;
+              setAiAnalysis(fullText);
+            }
+          } catch {}
+        }
+      }
+    } catch (e: any) {
+      console.error("AI analysis error:", e);
+      toast.error(e.message || "Error al generar análisis con IA");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const StatSkeleton = () => (
     <Card className="glass-card">
       <CardContent className="p-4 text-center space-y-2">
@@ -252,6 +332,10 @@ const GeneralPage = () => {
                     <FileText className="h-4 w-4 mr-1" />
                     PDF
                   </Button>
+                  <Button variant="outline" size="sm" onClick={handleAIAnalysis} disabled={aiLoading || enrollmentLoading || !chartData} title="Analizar con IA">
+                    <Brain className={`h-4 w-4 mr-1 ${aiLoading ? "animate-pulse" : ""}`} />
+                    IA
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -354,6 +438,9 @@ const GeneralPage = () => {
             </>
           )}
         </motion.div>
+
+        {/* AI Analysis */}
+        <AIAnalysis analysis={aiAnalysis} loading={aiLoading} />
 
         {/* Charts — lazy loaded after all data is ready */}
         {enrollmentLoading ? (
