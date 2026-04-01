@@ -21,6 +21,7 @@ const GeneralPage = () => {
     data,
     loading,
     enrollmentLoading,
+    enrollmentProgress,
     error,
     setError,
     fetchGeneralData,
