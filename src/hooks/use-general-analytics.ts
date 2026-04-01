@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   SiteInfo,
   BasicCourse,
@@ -30,9 +30,19 @@ export interface GeneralData {
   loginLogs: LoginLogEntry[];
 }
 
+// Module-level cache so data survives tab switches
+let cachedData: GeneralData | null = null;
+let cachedForUrl: string | null = null;
+
 export function useGeneralAnalytics() {
   const { isConnected, disconnect } = useMoodleConnection();
-  const [data, setData] = useState<GeneralData | null>(null);
+
+  // Initialize from cache if available and same Moodle URL
+  const savedCfg = localStorage.getItem("moodle-config");
+  const currentUrl = savedCfg ? JSON.parse(savedCfg).moodleUrl : null;
+  const initialData = (cachedData && cachedForUrl === currentUrl) ? cachedData : null;
+
+  const [data, setData] = useState<GeneralData | null>(initialData);
   const [loading, setLoading] = useState(false);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
   const [enrollmentProgress, setEnrollmentProgress] = useState<{ completed: number; total: number }>({ completed: 0, total: 0 });
