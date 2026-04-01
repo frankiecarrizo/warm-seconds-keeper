@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, lazy, Suspense } from "react";
 import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet } from "lucide-react";
 import { exportGeneralToCSV, exportGeneralToPDF } from "@/lib/export-utils";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useGeneralAnalytics } from "@/hooks/use-general-analytics";
 import { motion, AnimatePresence } from "framer-motion";
-import { GeneralCharts } from "@/components/GeneralCharts";
+
+const GeneralCharts = lazy(() => import("@/components/GeneralCharts").then(m => ({ default: m.GeneralCharts })));
 
 
 
