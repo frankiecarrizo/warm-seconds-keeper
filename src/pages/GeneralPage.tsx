@@ -1,5 +1,5 @@
-import { useEffect, useMemo, lazy, Suspense } from "react";
-import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet } from "lucide-react";
+import { useEffect, useMemo, useState, lazy, Suspense } from "react";
+import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet, Brain } from "lucide-react";
 import { exportGeneralToCSV, exportGeneralToPDF } from "@/lib/export-utils";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGeneralAnalytics } from "@/hooks/use-general-analytics";
 import { motion, AnimatePresence } from "framer-motion";
+import { AIAnalysis } from "@/components/AIAnalysis";
+import { toast } from "sonner";
 
 const GeneralCharts = lazy(() => import("@/components/GeneralCharts").then(m => ({ default: m.GeneralCharts })));
 
