@@ -138,9 +138,11 @@ export function useGeneralAnalytics() {
       }
 
       // Single state update with all summaries at once
-      setData((prev) =>
-        prev ? { ...prev, enrollmentSummaries: allSummaries } : prev
-      );
+      setData((prev) => {
+        const updated = prev ? { ...prev, enrollmentSummaries: allSummaries } : prev;
+        if (updated) { cachedData = updated; }
+        return updated;
+      });
       setEnrollmentLoading(false);
     } catch (e: any) {
       if (!handleTokenError(e)) {
