@@ -35,6 +35,7 @@ export function useGeneralAnalytics() {
   const [data, setData] = useState<GeneralData | null>(null);
   const [loading, setLoading] = useState(false);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
+  const [enrollmentProgress, setEnrollmentProgress] = useState<{ completed: number; total: number }>({ completed: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
 
   const handleTokenError = useCallback((e: any): boolean => {
@@ -99,23 +100,30 @@ export function useGeneralAnalytics() {
 
       setEnrollmentLoading(true);
       const courseIds = filteredCourses.map((c: any) => c.id);
-      const batchSize = 5;
+      const batchSize = 20;
       const allSummaries: CourseEnrollmentSummary[] = [];
+      let completedBatches = 0;
+      const totalBatches = Math.ceil(courseIds.length / batchSize);
 
       for (let i = 0; i < courseIds.length; i += batchSize) {
         const batch = courseIds.slice(i, i + batchSize);
         try {
           const summaries = await getCoursesEnrollmentSummary(cfg, batch);
           allSummaries.push(...summaries);
-          setData((prev) =>
-            prev ? { ...prev, enrollmentSummaries: [...allSummaries] } : prev
-          );
+          completedBatches++;
+          // Only update progress counter, not summaries — avoid chart re-renders
+          setEnrollmentProgress({ completed: completedBatches, total: totalBatches });
         } catch (e: any) {
           if (handleTokenError(e)) return;
           console.error("Batch enrollment error:", e);
+          completedBatches++;
         }
       }
 
+      // Single state update with all summaries at once
+      setData((prev) =>
+        prev ? { ...prev, enrollmentSummaries: allSummaries } : prev
+      );
       setEnrollmentLoading(false);
     } catch (e: any) {
       if (!handleTokenError(e)) {
@@ -131,6 +139,7 @@ export function useGeneralAnalytics() {
     data,
     loading,
     enrollmentLoading,
+    enrollmentProgress,
     error,
     setError,
     fetchGeneralData,
