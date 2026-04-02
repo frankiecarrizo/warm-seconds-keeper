@@ -205,14 +205,22 @@ const Index = () => {
                       <p className="text-xs text-muted-foreground">Finalización promedio</p>
                     </CardContent>
                   </Card>
-                  <Card className="glass-card">
-                    <CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold text-info">
-                        {userData.courses.reduce((s, c) => s + (c.quizAttempts?.length ?? 0), 0)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Quizzes realizados</p>
-                    </CardContent>
-                  </Card>
+                   <Card className="glass-card">
+                     <CardContent className="p-4 text-center">
+                       <p className="text-2xl font-bold text-info">
+                         {userData.courses.reduce((s, c) => s + (c.quizAttempts?.length ?? 0), 0)}
+                       </p>
+                       <p className="text-xs text-muted-foreground">Quizzes realizados</p>
+                     </CardContent>
+                   </Card>
+                   <Card className="glass-card">
+                     <CardContent className="p-4 text-center">
+                       <p className="text-2xl font-bold text-warning">
+                         {userData.courses.reduce((s, c) => s + (c.certificates?.length ?? 0), 0)}
+                       </p>
+                       <p className="text-xs text-muted-foreground">Certificados</p>
+                     </CardContent>
+                   </Card>
                 </motion.div>
               )}
 
