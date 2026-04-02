@@ -306,16 +306,27 @@ serve(async (req) => {
           // Smart completion: official criteria or activity-based fallback
           const completionResult = await getCompletionForUser(course.id, userId);
 
-          // Get quiz attempts
+          // Get quiz attempts and certificates from course contents
           const contents = await callMoodle("core_course_get_contents", {
             courseid: String(course.id),
           }).catch(() => []);
 
           const quizzes: any[] = [];
+          const certificates: any[] = [];
           for (const section of contents) {
             for (const mod of section.modules || []) {
               if (mod.modname === "quiz") {
                 quizzes.push({ id: mod.instance, name: mod.name });
+              }
+              if (mod.modname === "customcert" || mod.modname === "certificate") {
+                certificates.push({
+                  id: mod.instance,
+                  cmid: mod.id,
+                  name: mod.name,
+                  type: mod.modname,
+                  courseId: course.id,
+                  courseName: course.fullname,
+                });
               }
             }
           }
@@ -334,6 +345,42 @@ serve(async (req) => {
                 attempts: att.attempts || [],
               });
             } catch {}
+          }
+
+          // Check issued certificates for customcert
+          const issuedCerts: any[] = [];
+          for (const cert of certificates) {
+            if (cert.type === "customcert") {
+              try {
+                const issued = await callMoodle("mod_customcert_get_issued_certificates", {
+                  certificateid: String(cert.id),
+                });
+                const userCert = (issued.issues || []).find((i: any) => i.userid === userId);
+                if (userCert) {
+                  issuedCerts.push({
+                    ...cert,
+                    issued: true,
+                    issueDate: userCert.timecreated,
+                    code: userCert.code || null,
+                    downloadUrl: `${moodleUrl}/mod/customcert/view.php?id=${cert.cmid}&downloadown=1`,
+                  });
+                }
+              } catch {
+                // If API not available, still include cert with download URL
+                issuedCerts.push({
+                  ...cert,
+                  issued: null,
+                  downloadUrl: `${moodleUrl}/mod/customcert/view.php?id=${cert.cmid}&downloadown=1`,
+                });
+              }
+            } else {
+              // Native certificate module
+              issuedCerts.push({
+                ...cert,
+                issued: null,
+                downloadUrl: `${moodleUrl}/mod/certificate/view.php?id=${cert.cmid}&action=get`,
+              });
+            }
           }
 
           // Determine roles
@@ -361,6 +408,7 @@ serve(async (req) => {
             completion: null,
             quizAttempts,
             roles,
+            certificates: issuedCerts,
           });
         }
 

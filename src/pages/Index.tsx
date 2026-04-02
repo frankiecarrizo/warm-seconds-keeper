@@ -1,4 +1,4 @@
-import { BookOpen, User, Calendar, Clock, Loader2, Sparkles, Download, FileText, FileSpreadsheet, AlertCircle } from "lucide-react";
+import { BookOpen, User, Calendar, Clock, Loader2, Sparkles, Download, FileText, FileSpreadsheet, AlertCircle, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
@@ -7,6 +7,7 @@ import { UserCharts } from "@/components/UserCharts";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { CourseDetail } from "@/components/CourseDetail";
 import { useMoodleAnalytics } from "@/hooks/use-moodle-analytics";
+import { MoodleCertificate } from "@/lib/moodle-api";
 import { exportToCSV, exportToPDF } from "@/lib/export-utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -183,7 +184,7 @@ const Index = () => {
 
               {/* Quick stats */}
               {userData && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <Card className="glass-card">
                     <CardContent className="p-4 text-center">
                       <p className="text-2xl font-bold text-foreground">{userData.totalCourses}</p>
@@ -204,19 +205,75 @@ const Index = () => {
                       <p className="text-xs text-muted-foreground">Finalización promedio</p>
                     </CardContent>
                   </Card>
-                  <Card className="glass-card">
-                    <CardContent className="p-4 text-center">
-                      <p className="text-2xl font-bold text-info">
-                        {userData.courses.reduce((s, c) => s + (c.quizAttempts?.length ?? 0), 0)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Quizzes realizados</p>
-                    </CardContent>
-                  </Card>
+                   <Card className="glass-card">
+                     <CardContent className="p-4 text-center">
+                       <p className="text-2xl font-bold text-info">
+                         {userData.courses.reduce((s, c) => s + (c.quizAttempts?.length ?? 0), 0)}
+                       </p>
+                       <p className="text-xs text-muted-foreground">Quizzes realizados</p>
+                     </CardContent>
+                   </Card>
+                   <Card className="glass-card">
+                     <CardContent className="p-4 text-center">
+                       <p className="text-2xl font-bold text-warning">
+                         {userData.courses.reduce((s, c) => s + (c.certificates?.length ?? 0), 0)}
+                       </p>
+                       <p className="text-xs text-muted-foreground">Certificados</p>
+                     </CardContent>
+                   </Card>
                 </motion.div>
               )}
 
               {/* Charts */}
               {userData && <UserCharts data={userData} />}
+
+              {/* Certificates section */}
+              {userData && (() => {
+                const allCerts: MoodleCertificate[] = userData.courses.flatMap(c => c.certificates || []);
+                if (allCerts.length === 0) return null;
+                return (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+                    <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+                      <Award className="h-5 w-5 text-warning" />
+                      Certificados ({allCerts.length})
+                    </h3>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {allCerts.map((cert, i) => (
+                        <Card key={`${cert.courseId}-${cert.id}-${i}`} className="glass-card">
+                          <CardContent className="p-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/10">
+                              <Award className="h-5 w-5 text-warning" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{cert.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{cert.courseName}</p>
+                              {cert.issueDate && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Emitido: {new Date(cert.issueDate * 1000).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}
+                                </p>
+                              )}
+                              {cert.code && (
+                                <p className="text-[10px] text-muted-foreground font-mono">Código: {cert.code}</p>
+                              )}
+                            </div>
+                            <a
+                              href={cert.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0"
+                            >
+                              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                                <Download className="h-3.5 w-3.5" />
+                                Descargar
+                              </Button>
+                            </a>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })()}
 
               {/* Course detail list */}
               {userData && (

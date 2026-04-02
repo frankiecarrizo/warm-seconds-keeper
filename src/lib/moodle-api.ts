@@ -12,6 +12,19 @@ export interface MoodleUser {
   suspended: boolean;
 }
 
+export interface MoodleCertificate {
+  id: number;
+  cmid: number;
+  name: string;
+  type: "customcert" | "certificate";
+  courseId: number;
+  courseName: string;
+  issued: boolean | null;
+  issueDate?: number;
+  code?: string | null;
+  downloadUrl: string;
+}
+
 export interface MoodleCourseData {
   id: number;
   shortname: string;
@@ -31,6 +44,7 @@ export interface MoodleCourseData {
     attempts: any[];
   }[];
   roles: string[];
+  certificates?: MoodleCertificate[];
 }
 
 export interface UserFullData {
