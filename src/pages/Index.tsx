@@ -219,6 +219,54 @@ const Index = () => {
               {/* Charts */}
               {userData && <UserCharts data={userData} />}
 
+              {/* Certificates section */}
+              {userData && (() => {
+                const allCerts: MoodleCertificate[] = userData.courses.flatMap(c => c.certificates || []);
+                if (allCerts.length === 0) return null;
+                return (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}>
+                    <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+                      <Award className="h-5 w-5 text-warning" />
+                      Certificados ({allCerts.length})
+                    </h3>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {allCerts.map((cert, i) => (
+                        <Card key={`${cert.courseId}-${cert.id}-${i}`} className="glass-card">
+                          <CardContent className="p-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warning/10">
+                              <Award className="h-5 w-5 text-warning" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{cert.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{cert.courseName}</p>
+                              {cert.issueDate && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Emitido: {new Date(cert.issueDate * 1000).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}
+                                </p>
+                              )}
+                              {cert.code && (
+                                <p className="text-[10px] text-muted-foreground font-mono">Código: {cert.code}</p>
+                              )}
+                            </div>
+                            <a
+                              href={cert.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="shrink-0"
+                            >
+                              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                                <Download className="h-3.5 w-3.5" />
+                                Descargar
+                              </Button>
+                            </a>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })()}
+
               {/* Course detail list */}
               {userData && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
