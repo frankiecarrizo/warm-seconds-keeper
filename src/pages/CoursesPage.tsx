@@ -226,6 +226,19 @@ const CoursesPage = () => {
             {/* Charts */}
             {courseData && <CourseCharts data={courseData} />}
 
+            {/* Messaging */}
+            {courseData && (() => {
+              const saved = localStorage.getItem("moodle-config");
+              const cfg = saved ? JSON.parse(saved) as MoodleConfig : null;
+              return cfg ? (
+                <CourseMessaging
+                  allStudentsBasic={courseData.allStudentsBasic || courseData.students}
+                  courseName={selectedCourse.fullname}
+                  config={cfg}
+                />
+              ) : null;
+            })()}
+
             {/* AI Analysis */}
             <AIAnalysis analysis={analysis} loading={analysisLoading} />
           </motion.div>
