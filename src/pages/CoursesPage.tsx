@@ -6,9 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CourseSearch } from "@/components/CourseSearch";
 import { CourseCharts } from "@/components/CourseCharts";
 import { AIAnalysis } from "@/components/AIAnalysis";
+import { CourseMessaging } from "@/components/CourseMessaging";
 import { useCourseAnalytics } from "@/hooks/use-course-analytics";
 import { motion, AnimatePresence } from "framer-motion";
 import { exportCourseToCSV, exportCourseToPDF } from "@/lib/export-utils";
+import { MoodleConfig } from "@/lib/moodle-api";
 
 const CoursesPage = () => {
   const {
@@ -223,6 +225,19 @@ const CoursesPage = () => {
 
             {/* Charts */}
             {courseData && <CourseCharts data={courseData} />}
+
+            {/* Messaging */}
+            {courseData && (() => {
+              const saved = localStorage.getItem("moodle-config");
+              const cfg = saved ? JSON.parse(saved) as MoodleConfig : null;
+              return cfg ? (
+                <CourseMessaging
+                  allStudentsBasic={courseData.allStudentsBasic || courseData.students}
+                  courseName={selectedCourse.fullname}
+                  config={cfg}
+                />
+              ) : null;
+            })()}
 
             {/* AI Analysis */}
             <AIAnalysis analysis={analysis} loading={analysisLoading} />
