@@ -184,7 +184,7 @@ const Index = () => {
 
               {/* Quick stats */}
               {userData && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <Card className="glass-card">
                     <CardContent className="p-4 text-center">
                       <p className="text-2xl font-bold text-foreground">{userData.totalCourses}</p>
