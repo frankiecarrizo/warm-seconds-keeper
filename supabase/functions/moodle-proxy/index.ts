@@ -408,6 +408,7 @@ serve(async (req) => {
             completion: null,
             quizAttempts,
             roles,
+            certificates: issuedCerts,
           });
         }
 
