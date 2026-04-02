@@ -6,9 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CourseSearch } from "@/components/CourseSearch";
 import { CourseCharts } from "@/components/CourseCharts";
 import { AIAnalysis } from "@/components/AIAnalysis";
+import { CourseMessaging } from "@/components/CourseMessaging";
 import { useCourseAnalytics } from "@/hooks/use-course-analytics";
 import { motion, AnimatePresence } from "framer-motion";
 import { exportCourseToCSV, exportCourseToPDF } from "@/lib/export-utils";
+import { MoodleConfig } from "@/lib/moodle-api";
 
 const CoursesPage = () => {
   const {
