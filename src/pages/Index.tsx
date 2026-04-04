@@ -1,4 +1,5 @@
 import { BookOpen, User, Calendar, Clock, Loader2, Sparkles, Download, FileText, FileSpreadsheet, AlertCircle, Award } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
@@ -256,17 +257,35 @@ const Index = () => {
                                 <p className="text-[10px] text-muted-foreground font-mono">Código: {cert.code}</p>
                               )}
                             </div>
-                            <a
-                              href={cert.downloadUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="shrink-0"
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 text-xs shrink-0"
+                              onClick={async () => {
+                                const config = JSON.parse(localStorage.getItem("moodle-config") || "{}");
+                                if (!config.moodleUrl || !config.moodleToken) return;
+                                toast.info("Descargando certificado...");
+                                try {
+                                  const { callProxy } = await import("@/lib/moodle-api");
+                                  const res = await callProxy(config, "download_certificate", { url: cert.downloadUrl });
+                                  const byteChars = atob(res.base64);
+                                  const byteArray = new Uint8Array(byteChars.length);
+                                  for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+                                  const blob = new Blob([byteArray], { type: res.contentType });
+                                  const link = document.createElement("a");
+                                  link.href = URL.createObjectURL(blob);
+                                  link.download = `${cert.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+                                  link.click();
+                                  URL.revokeObjectURL(link.href);
+                                  toast.success("Certificado descargado");
+                                } catch (e: any) {
+                                  toast.error(e.message || "Error al descargar");
+                                }
+                              }}
                             >
-                              <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                                <Download className="h-3.5 w-3.5" />
-                                Descargar
-                              </Button>
-                            </a>
+                              <Download className="h-3.5 w-3.5" />
+                              Descargar
+                            </Button>
                           </CardContent>
                         </Card>
                       ))}

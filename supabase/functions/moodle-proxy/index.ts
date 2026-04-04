@@ -776,6 +776,23 @@ serve(async (req) => {
         break;
       }
 
+      case "download_certificate": {
+        const { url: certUrl } = params;
+        if (!certUrl) throw { message: "Missing certificate url", status: 400 };
+        const separator = certUrl.includes("?") ? "&" : "?";
+        const fullUrl = `${certUrl}${separator}token=${moodleToken}`;
+        const certResp = await fetch(fullUrl, { redirect: "follow" });
+        if (!certResp.ok) throw { message: `Certificate download failed: ${certResp.status}`, status: 502 };
+        const contentType = certResp.headers.get("content-type") || "application/pdf";
+        const arrayBuf = await certResp.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const base64 = btoa(binary);
+        result = { base64, contentType, size: bytes.length };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: `Unknown action: ${action}` }),
