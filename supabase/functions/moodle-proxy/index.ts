@@ -776,7 +776,6 @@ serve(async (req) => {
         break;
       }
 
-      default:
       case "download_certificate": {
         const { url: certUrl } = params;
         if (!certUrl) throw { message: "Missing certificate url", status: 400 };
@@ -794,7 +793,7 @@ serve(async (req) => {
         break;
       }
 
-        default:
+      default:
         return new Response(
           JSON.stringify({ error: `Unknown action: ${action}` }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
