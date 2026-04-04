@@ -544,7 +544,7 @@ export function GeneralCharts({
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} />
+        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} />
       </div>
       <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
         {visibleWidgets.map((w) => {

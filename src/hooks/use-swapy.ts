@@ -157,5 +157,6 @@ export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", en
     visibleWidgets,
     toggleWidget,
     resetLayout,
+    showAll,
   };
 }
