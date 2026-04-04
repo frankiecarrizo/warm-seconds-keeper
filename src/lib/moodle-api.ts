@@ -123,7 +123,7 @@ export const isAccessError = (message: string): boolean => {
   return ACCESS_ERROR_PATTERNS.some((p) => lower.includes(p));
 };
 
-const callProxy = async (
+export const callProxy = async (
   config: MoodleConfig,
   action: string,
   params?: Record<string, any>

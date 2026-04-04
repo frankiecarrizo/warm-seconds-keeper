@@ -1,4 +1,5 @@
 import { BookOpen, User, Calendar, Clock, Loader2, Sparkles, Download, FileText, FileSpreadsheet, AlertCircle, Award } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
