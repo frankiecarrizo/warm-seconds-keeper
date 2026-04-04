@@ -792,6 +792,10 @@ serve(async (req) => {
         const certResp = await fetch(fullUrl, { redirect: "follow" });
         if (!certResp.ok) throw { message: `Certificate download failed: ${certResp.status}`, status: 502 };
         const contentType = certResp.headers.get("content-type") || "application/pdf";
+        // If we got HTML instead of PDF, Moodle didn't serve the file properly
+        if (contentType.includes("text/html")) {
+          throw { message: "Moodle devolvió HTML en lugar del PDF. Verificá permisos del token.", status: 502 };
+        }
         const arrayBuf = await certResp.arrayBuffer();
         const bytes = new Uint8Array(arrayBuf);
         let binary = "";
