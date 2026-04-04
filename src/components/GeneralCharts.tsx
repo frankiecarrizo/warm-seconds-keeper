@@ -62,7 +62,7 @@ export function GeneralCharts({
   formatDate,
   loginLogs,
 }: GeneralChartsProps) {
-  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout } = useSwapy({
+  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll } = useSwapy({
     storageKey: "general-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
   });
