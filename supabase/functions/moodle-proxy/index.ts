@@ -357,16 +357,24 @@ serve(async (req) => {
                 });
                 const userCert = (issued.issues || []).find((i: any) => i.userid === userId);
                 if (userCert) {
+                  // Try to get the file URL from the issue data or build pluginfile URL
+                  let downloadUrl = "";
+                  if (userCert.fileurl) {
+                    downloadUrl = userCert.fileurl;
+                  } else {
+                    // Use Moodle's mobile pluginfile endpoint which accepts tokens
+                    downloadUrl = `${moodleUrl}/webservice/pluginfile.php/${userCert.contextid || ""}/mod_customcert/issues/${userCert.id}/certificate.pdf`;
+                  }
                   issuedCerts.push({
                     ...cert,
                     issued: true,
                     issueDate: userCert.timecreated,
                     code: userCert.code || null,
-                    downloadUrl: `${moodleUrl}/mod/customcert/view.php?id=${cert.cmid}&downloadown=1`,
+                    downloadUrl,
                   });
                 }
               } catch {
-                // If API not available, still include cert with download URL
+                // If API not available, still include cert with fallback URL
                 issuedCerts.push({
                   ...cert,
                   issued: null,

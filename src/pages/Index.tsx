@@ -247,7 +247,12 @@ const Index = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-foreground truncate">{cert.name}</p>
-                              <p className="text-xs text-muted-foreground truncate">{cert.courseName}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs text-muted-foreground truncate">{cert.courseName}</p>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground whitespace-nowrap">
+                                  {cert.type === "customcert" ? "Custom Cert" : "Nativo"}
+                                </span>
+                              </div>
                               {cert.issueDate && (
                                 <p className="text-[10px] text-muted-foreground">
                                   Emitido: {new Date(cert.issueDate * 1000).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })}
