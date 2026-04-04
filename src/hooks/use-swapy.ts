@@ -137,6 +137,18 @@ export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", en
     setWidgets(defaultWidgets);
   }, [storageKey, defaultWidgets]);
 
+  const showAll = useCallback(() => {
+    setWidgets((prev) => {
+      const next = prev.map((w) => ({ ...w, visible: true }));
+      persist(next);
+      if (swapyRef.current) {
+        swapyRef.current.destroy();
+        swapyRef.current = null;
+      }
+      return next;
+    });
+  }, [persist]);
+
   const visibleWidgets = widgets.filter((w) => w.visible);
 
   return {
@@ -145,5 +157,6 @@ export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", en
     visibleWidgets,
     toggleWidget,
     resetLayout,
+    showAll,
   };
 }

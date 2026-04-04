@@ -36,15 +36,15 @@ interface GeneralChartsProps {
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: true },
-  { id: "completion-donut", label: "Finalización Global", visible: true },
-  { id: "user-status", label: "Estado de Usuarios", visible: true },
-  { id: "access-donut", label: "Acceso a la Plataforma", visible: true },
-  { id: "logins-by-month", label: "Ingresos por Mes", visible: true },
-  { id: "heatmap", label: "Mapa de Calor", visible: true },
-  { id: "top-completions", label: "Top 5 — Finalizaciones", visible: true },
-  { id: "categories", label: "Cursos por Categoría", visible: true },
-  { id: "all-courses", label: "Todos los Cursos", visible: true },
+  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: false },
+  { id: "completion-donut", label: "Finalización Global", visible: false },
+  { id: "user-status", label: "Estado de Usuarios", visible: false },
+  { id: "access-donut", label: "Acceso a la Plataforma", visible: false },
+  { id: "logins-by-month", label: "Ingresos por Mes", visible: false },
+  { id: "heatmap", label: "Mapa de Calor", visible: false },
+  { id: "top-completions", label: "Top 5 — Finalizaciones", visible: false },
+  { id: "categories", label: "Cursos por Categoría", visible: false },
+  { id: "all-courses", label: "Todos los Cursos", visible: false },
 ];
 
 export function GeneralCharts({
@@ -62,7 +62,7 @@ export function GeneralCharts({
   formatDate,
   loginLogs,
 }: GeneralChartsProps) {
-  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout } = useSwapy({
+  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll } = useSwapy({
     storageKey: "general-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
   });
@@ -544,7 +544,7 @@ export function GeneralCharts({
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} />
+        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} />
       </div>
       <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
         {visibleWidgets.map((w) => {
