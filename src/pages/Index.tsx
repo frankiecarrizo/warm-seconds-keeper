@@ -49,6 +49,40 @@ const Index = () => {
     return Math.floor((Date.now() - ts * 1000) / (1000 * 60 * 60 * 24));
   };
 
+  const handleCertificateDownload = async (cert: MoodleCertificate) => {
+    if (!userData || !config.moodleUrl || !config.moodleToken) return;
+
+    toast.info("Descargando certificado...");
+
+    try {
+      const { callProxy } = await import("@/lib/moodle-api");
+      const res = await callProxy(config, "download_certificate", {
+        url: cert.downloadUrl,
+        type: cert.type,
+        certificateId: cert.id,
+        userId: userData.user.id,
+      });
+
+      if (!res?.downloadable || !res?.base64) {
+        throw new Error(res?.reason || "No se pudo descargar el certificado.");
+      }
+
+      const byteChars = atob(res.base64);
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+
+      const blob = new Blob([byteArray], { type: res.contentType || "application/pdf" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${cert.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      toast.success("Certificado descargado");
+    } catch (e: any) {
+      toast.error(e.message || "Error al descargar");
+    }
+  };
+
   return (
     <div className="min-h-full bg-background">
       <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
@@ -266,27 +300,7 @@ const Index = () => {
                               variant="outline"
                               size="sm"
                               className="gap-1.5 text-xs shrink-0"
-                              onClick={async () => {
-                                const config = JSON.parse(localStorage.getItem("moodle-config") || "{}");
-                                if (!config.moodleUrl || !config.moodleToken) return;
-                                toast.info("Descargando certificado...");
-                                try {
-                                  const { callProxy } = await import("@/lib/moodle-api");
-                                  const res = await callProxy(config, "download_certificate", { url: cert.downloadUrl });
-                                  const byteChars = atob(res.base64);
-                                  const byteArray = new Uint8Array(byteChars.length);
-                                  for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
-                                  const blob = new Blob([byteArray], { type: res.contentType });
-                                  const link = document.createElement("a");
-                                  link.href = URL.createObjectURL(blob);
-                                  link.download = `${cert.name.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
-                                  link.click();
-                                  URL.revokeObjectURL(link.href);
-                                  toast.success("Certificado descargado");
-                                } catch (e: any) {
-                                  toast.error(e.message || "Error al descargar");
-                                }
-                              }}
+                               onClick={() => handleCertificateDownload(cert)}
                             >
                               <Download className="h-3.5 w-3.5" />
                               Descargar
