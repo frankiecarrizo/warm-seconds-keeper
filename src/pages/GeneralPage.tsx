@@ -322,7 +322,6 @@ const GeneralPage = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={fetchGeneralData} disabled={loading}>
                   <Button variant="outline" size="sm" onClick={() => { setIsFreshLoad(true); fetchGeneralData(); }} disabled={loading}>
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                     Actualizar
