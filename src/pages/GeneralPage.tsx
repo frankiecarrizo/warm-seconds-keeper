@@ -10,8 +10,6 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGeneralAnalytics } from "@/hooks/use-general-analytics";
 
-// Track whether we did a fresh fetch this session
-let lastFetchTimestamp = 0;
 import { motion, AnimatePresence } from "framer-motion";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { toast } from "sonner";
@@ -325,6 +323,7 @@ const GeneralPage = () => {
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <Button variant="outline" size="sm" onClick={fetchGeneralData} disabled={loading}>
+                  <Button variant="outline" size="sm" onClick={() => { setIsFreshLoad(true); fetchGeneralData(); }} disabled={loading}>
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                     Actualizar
                   </Button>
