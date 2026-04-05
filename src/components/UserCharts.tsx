@@ -19,9 +19,6 @@ interface UserChartsProps {
 const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "radar", label: "Perfil del Estudiante", visible: true },
   { id: "completion-pie", label: "Estado de Cursos", visible: true },
-  { id: "progress", label: "Progreso por Curso", visible: true },
-  { id: "grades", label: "Calificaciones por Curso", visible: true },
-  { id: "quizzes", label: "Rendimiento en Quizzes", visible: true },
 ];
 
 export function UserCharts({ data }: UserChartsProps) {
@@ -288,7 +285,7 @@ export function UserCharts({ data }: UserChartsProps) {
   };
 
   // Determine which widgets span full width
-  const fullWidthIds = new Set(["progress", "grades", "quizzes"]);
+  const fullWidthIds = new Set<string>([]);
 
   return (
     <div className="space-y-3">
