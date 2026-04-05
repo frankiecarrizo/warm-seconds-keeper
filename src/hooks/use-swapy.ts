@@ -12,6 +12,7 @@ interface UseSwapyOptions {
   defaultWidgets: WidgetConfig[];
   animation?: "dynamic" | "spring" | "none";
   enabled?: boolean;
+  forceHideAll?: boolean;
 }
 
 function loadFromStorage(key: string): { order: string[]; hidden: string[] } | null {
@@ -27,13 +28,34 @@ function saveToStorage(key: string, order: string[], hidden: string[]) {
   localStorage.setItem(key, JSON.stringify({ order, hidden }));
 }
 
-export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", enabled = true }: UseSwapyOptions) {
+export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", enabled = true, forceHideAll = false }: UseSwapyOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const swapyRef = useRef<Swapy | null>(null);
 
   const stored = loadFromStorage(storageKey);
+  const appliedForceHide = useRef(forceHideAll);
 
   const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
+    if (forceHideAll) {
+      // On fresh load/refresh: hide all widgets regardless of storage
+      if (stored) {
+        const widgetMap = new Map(defaultWidgets.map((w) => [w.id, w]));
+        const ordered: WidgetConfig[] = [];
+        for (const id of stored.order) {
+          const w = widgetMap.get(id);
+          if (w) {
+            ordered.push({ ...w, visible: false });
+            widgetMap.delete(id);
+          }
+        }
+        for (const w of widgetMap.values()) {
+          ordered.push({ ...w, visible: false });
+        }
+        return ordered;
+      }
+      return defaultWidgets.map((w) => ({ ...w, visible: false }));
+    }
+
     if (stored) {
       const widgetMap = new Map(defaultWidgets.map((w) => [w.id, w]));
       const ordered: WidgetConfig[] = [];
@@ -158,5 +180,16 @@ export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", en
     toggleWidget,
     resetLayout,
     showAll,
+    hideAll: useCallback(() => {
+      setWidgets((prev) => {
+        const next = prev.map((w) => ({ ...w, visible: false }));
+        persist(next);
+        if (swapyRef.current) {
+          swapyRef.current.destroy();
+          swapyRef.current = null;
+        }
+        return next;
+      });
+    }, [persist]),
   };
 }

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGeneralAnalytics } from "@/hooks/use-general-analytics";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ const GeneralPage = () => {
   const { connect, disconnect, configUrl } = useMoodleConnection();
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [isFreshLoad, setIsFreshLoad] = useState(!data);
 
   // Build category map and tree data for chart
   const categoryMap = useMemo(() => {
@@ -320,7 +322,7 @@ const GeneralPage = () => {
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={fetchGeneralData} disabled={loading}>
+                  <Button variant="outline" size="sm" onClick={() => { setIsFreshLoad(true); fetchGeneralData(); }} disabled={loading}>
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                     Actualizar
                   </Button>
@@ -460,6 +462,7 @@ const GeneralPage = () => {
               courses={courses}
               summaryMap={chartData.summaryMap}
               formatDate={formatDate}
+              isFreshLoad={isFreshLoad}
               loginLogs={data.loginLogs || []}
             />
           </Suspense>

@@ -33,6 +33,7 @@ interface GeneralChartsProps {
   summaryMap: Map<number, any>;
   formatDate: (ts: number) => string;
   loginLogs: LoginLogEntry[];
+  isFreshLoad?: boolean;
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
@@ -61,10 +62,12 @@ export function GeneralCharts({
   summaryMap,
   formatDate,
   loginLogs,
+  isFreshLoad = false,
 }: GeneralChartsProps) {
   const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll } = useSwapy({
     storageKey: "general-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
+    forceHideAll: isFreshLoad,
   });
 
   const fullWidthIds = new Set(["top-completions", "categories", "all-courses", "logins-by-month", "heatmap"]);
@@ -543,7 +546,7 @@ export function GeneralCharts({
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex justify-center">
         <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} />
       </div>
       <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
