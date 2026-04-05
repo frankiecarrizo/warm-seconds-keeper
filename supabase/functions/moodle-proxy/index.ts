@@ -44,6 +44,100 @@ serve(async (req) => {
       return data;
     };
 
+    const toBase64Result = async (response: Response) => {
+      const contentType = response.headers.get("content-type") || "application/pdf";
+      const arrayBuf = await response.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuf);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+
+      return {
+        downloadable: true,
+        base64: btoa(binary),
+        contentType,
+        size: bytes.length,
+      };
+    };
+
+    const buildDownloadFailure = (reason: string) => ({
+      downloadable: false,
+      reason,
+    });
+
+    const tryDirectCertificateDownload = async (certUrl: string) => {
+      const separator = certUrl.includes("?") ? "&" : "?";
+      const candidates = [
+        `${certUrl}${separator}token=${moodleToken}`,
+        `${certUrl}${separator}wstoken=${moodleToken}`,
+      ];
+
+      for (const fullUrl of candidates) {
+        const certResp = await fetch(fullUrl, { redirect: "follow" });
+        const contentType = certResp.headers.get("content-type") || "";
+
+        if (!certResp.ok) {
+          continue;
+        }
+
+        if (certResp.url.includes("/login/index.php")) {
+          return buildDownloadFailure(
+            "Moodle redirigió la descarga al login. Este certificado no acepta descarga directa con el token actual."
+          );
+        }
+
+        if (contentType.includes("text/html")) {
+          return buildDownloadFailure(
+            "Moodle devolvió una página HTML en lugar del PDF. La descarga directa no está habilitada para este certificado con el token actual."
+          );
+        }
+
+        return await toBase64Result(certResp);
+      }
+
+      return buildDownloadFailure("No se pudo descargar el certificado desde Moodle.");
+    };
+
+    const tryCustomCertMobileDownload = async (certificateId: number, userId: number) => {
+      const mobileUrl = new URL(`${moodleUrl}/mod/customcert/mobile/pluginfile.php`);
+      mobileUrl.searchParams.set("token", moodleToken);
+      mobileUrl.searchParams.set("certificateid", String(certificateId));
+      mobileUrl.searchParams.set("userid", String(userId));
+
+      const response = await fetch(mobileUrl.toString(), { redirect: "follow" });
+      const contentType = response.headers.get("content-type") || "";
+
+      if (contentType.includes("application/json")) {
+        const payload = await response.json().catch(() => null);
+        const message = payload?.error || payload?.message || "";
+
+        if (message.toLowerCase().includes("file downloading must be enabled")) {
+          return buildDownloadFailure(
+            "El servicio web de Moodle no tiene habilitada la descarga de archivos para este token. Activá 'Files download' en el servicio del token para descargar certificados Custom Cert."
+          );
+        }
+
+        if (message.toLowerCase().includes("acceso")) {
+          return buildDownloadFailure(
+            "El token de Moodle no tiene permisos para descargar este certificado Custom Cert."
+          );
+        }
+
+        return buildDownloadFailure(message || "Moodle no permitió descargar este certificado Custom Cert.");
+      }
+
+      if (!response.ok) {
+        return buildDownloadFailure(`Certificate download failed: ${response.status}`);
+      }
+
+      if (response.url.includes("/login/index.php") || contentType.includes("text/html")) {
+        return buildDownloadFailure(
+          "Moodle redirigió la descarga del Custom Cert al login en lugar de devolver el PDF."
+        );
+      }
+
+      return await toBase64Result(response);
+    };
+
     // ── Smart completion helper ──────────────────────────────────
     // 1. Try official course completion status
     // 2. Fallback: calculate % of completed activities
@@ -785,23 +879,18 @@ serve(async (req) => {
       }
 
       case "download_certificate": {
-        const { url: certUrl } = params;
+        const { url: certUrl, type, certificateId, userId } = params;
         if (!certUrl) throw { message: "Missing certificate url", status: 400 };
-        const separator = certUrl.includes("?") ? "&" : "?";
-        const fullUrl = `${certUrl}${separator}token=${moodleToken}`;
-        const certResp = await fetch(fullUrl, { redirect: "follow" });
-        if (!certResp.ok) throw { message: `Certificate download failed: ${certResp.status}`, status: 502 };
-        const contentType = certResp.headers.get("content-type") || "application/pdf";
-        // If we got HTML instead of PDF, Moodle didn't serve the file properly
-        if (contentType.includes("text/html")) {
-          throw { message: "Moodle devolvió HTML en lugar del PDF. Verificá permisos del token.", status: 502 };
+        if (type === "customcert" && certificateId && userId) {
+          result = await tryCustomCertMobileDownload(Number(certificateId), Number(userId));
+          if (!result.downloadable) {
+            const fallback = await tryDirectCertificateDownload(certUrl);
+            result = fallback.downloadable ? fallback : result;
+          }
+          break;
         }
-        const arrayBuf = await certResp.arrayBuffer();
-        const bytes = new Uint8Array(arrayBuf);
-        let binary = "";
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        const base64 = btoa(binary);
-        result = { base64, contentType, size: bytes.length };
+
+        result = await tryDirectCertificateDownload(certUrl);
         break;
       }
 
