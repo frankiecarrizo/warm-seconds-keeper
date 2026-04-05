@@ -285,7 +285,7 @@ export function UserCharts({ data }: UserChartsProps) {
   };
 
   // Determine which widgets span full width
-  const fullWidthIds = new Set(["progress", "grades", "quizzes"]);
+  const fullWidthIds = new Set<string>([]);
 
   return (
     <div className="space-y-3">

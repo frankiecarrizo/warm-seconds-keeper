@@ -235,7 +235,15 @@ export function CourseDetail({ course, config }: CourseDetailProps) {
                               <Progress value={pct} className="h-1" />
                             </div>
                             <span className={`text-xs font-mono font-semibold w-16 text-right ${getGradeColor(pct)}`}>
-                              {item.gradeformatted || "N/A"}
+                              {(() => {
+                                const raw = item.gradeformatted || "N/A";
+                                if (raw.includes("<")) {
+                                  const tmp = document.createElement("div");
+                                  tmp.innerHTML = raw;
+                                  return tmp.textContent?.trim() || raw;
+                                }
+                                return raw;
+                              })()}
                             </span>
                           </div>
                         );
