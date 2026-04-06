@@ -178,11 +178,11 @@ export function CourseDetail({ course, config }: CourseDetailProps) {
                     <Progress value={course.completionPercentage || progress} className="h-1.5" />
                   </div>
                   <span className="text-xs text-muted-foreground font-mono">{course.completionPercentage || Math.round(progress)}%</span>
-                  {courseGrade?.gradeformatted && (
+                  {courseGrade && courseGrade.graderaw != null && (
                     <span className={`text-xs font-semibold ${getGradeColor(
                       courseGrade.grademax > 0 ? (courseGrade.graderaw / courseGrade.grademax) * 100 : 0
                     )}`}>
-                      {courseGrade.gradeformatted}
+                      {Math.round(courseGrade.graderaw * 100) / 100}/{Math.round(courseGrade.grademax * 100) / 100}
                     </span>
                   )}
                 </div>
