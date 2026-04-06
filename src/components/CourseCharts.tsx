@@ -367,6 +367,7 @@ export function CourseCharts({ data }: CourseChartsProps) {
                 data-swapy-item={w.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+                className="h-full"
               >
                 {content}
               </motion.div>
