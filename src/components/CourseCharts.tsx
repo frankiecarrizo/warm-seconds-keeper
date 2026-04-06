@@ -157,7 +157,7 @@ export function CourseCharts({ data }: CourseChartsProps) {
                 Distribución de Notas
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 pb-5">
+            <CardContent className="pt-4 pb-5 flex-1">
               <div className="space-y-3">
                 {gradeDistribution.map((bucket) => {
                   const pct = totalGraded > 0 ? (bucket.count / totalGraded) * 100 : 0;
