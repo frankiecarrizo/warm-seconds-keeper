@@ -155,7 +155,7 @@ export function GeneralCharts({
                 Finalización Global
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center justify-center gap-8 pt-4 pb-5">
+            <CardContent className="flex items-center justify-center gap-8 pt-4 pb-5 flex-1">
               <div className="relative w-36 h-36">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
