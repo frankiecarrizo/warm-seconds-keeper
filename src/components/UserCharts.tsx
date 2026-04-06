@@ -123,14 +123,14 @@ export function UserCharts({ data }: UserChartsProps) {
     switch (id) {
       case "radar":
         return (
-          <Card className="glass-card h-full">
+           <Card className="glass-card h-full flex flex-col">
             <CardHeader className="pb-0">
               <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
                 Perfil del Estudiante
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-2 pb-4">
+            <CardContent className="pt-2 pb-4 flex-1">
               <div className="h-56 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
@@ -146,15 +146,15 @@ export function UserCharts({ data }: UserChartsProps) {
         );
       case "completion-pie":
         return (
-          <Card className="glass-card h-full">
+           <Card className="glass-card h-full flex flex-col">
             <CardHeader className="pb-0">
               <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
                 Estado de Cursos
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center justify-center gap-8 pt-4 pb-5">
-              <div className="relative w-36 h-36">
+             <CardContent className="flex items-center justify-center gap-8 pt-2 pb-4 flex-1">
+               <div className="relative w-36 h-36">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={completionPieData} cx="50%" cy="50%" innerRadius={42} outerRadius={60} dataKey="value" paddingAngle={3} startAngle={90} endAngle={-270} stroke="none">
@@ -292,7 +292,7 @@ export function UserCharts({ data }: UserChartsProps) {
       <div className="flex justify-end">
         <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} />
       </div>
-      <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
+      <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 items-stretch">
         {visibleWidgets.map((w) => {
           const content = renderWidget(w.id);
           if (!content) return null;
