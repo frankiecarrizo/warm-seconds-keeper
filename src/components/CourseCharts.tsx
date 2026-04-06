@@ -353,7 +353,7 @@ export function CourseCharts({ data }: CourseChartsProps) {
       <div className="flex justify-end">
         <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} />
       </div>
-      <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
+      <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 items-stretch">
         {visibleWidgets.map((w) => {
           const content = renderWidget(w.id);
           if (!content) return null;
