@@ -124,7 +124,7 @@ export function GeneralCharts({
                 Top 5 — Inscripciones por Curso
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 pb-5">
+            <CardContent className="pt-4 pb-5 flex-1">
               <div className="space-y-3">
                 {enrollmentChartData.map((item, idx) => {
                   const max = enrollmentChartData[0]?.estudiantes || 1;
