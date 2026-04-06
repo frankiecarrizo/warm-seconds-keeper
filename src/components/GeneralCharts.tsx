@@ -117,14 +117,14 @@ export function GeneralCharts({
     switch (id) {
       case "top-enrollment":
         return (
-          <Card className="glass-card h-full">
+          <Card className="glass-card h-full flex flex-col">
             <CardHeader className="pb-0">
               <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
                 Top 5 — Inscripciones por Curso
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 pb-5">
+            <CardContent className="pt-4 pb-5 flex-1">
               <div className="space-y-3">
                 {enrollmentChartData.map((item, idx) => {
                   const max = enrollmentChartData[0]?.estudiantes || 1;
@@ -148,14 +148,14 @@ export function GeneralCharts({
 
       case "completion-donut":
         return (
-          <Card className="glass-card h-full">
+          <Card className="glass-card h-full flex flex-col">
             <CardHeader className="pb-0">
               <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
                 Finalización Global
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center justify-center gap-8 pt-4 pb-5">
+            <CardContent className="flex items-center justify-center gap-8 pt-4 pb-5 flex-1">
               <div className="relative w-36 h-36">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -549,7 +549,7 @@ export function GeneralCharts({
       <div className="flex justify-center">
         <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} />
       </div>
-      <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2">
+      <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2 items-stretch">
         {visibleWidgets.map((w) => {
           const content = renderWidget(w.id);
           if (!content) return null;
@@ -563,6 +563,7 @@ export function GeneralCharts({
                 data-swapy-item={w.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+                className="h-full"
               >
                 {content}
               </motion.div>
