@@ -153,8 +153,8 @@ export function UserCharts({ data }: UserChartsProps) {
                 Estado de Cursos
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex items-center justify-center gap-8 pt-4 pb-5">
-              <div className="relative w-36 h-36">
+             <CardContent className="flex items-center justify-center gap-8 pt-2 pb-4 flex-1">
+               <div className="relative w-36 h-36">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={completionPieData} cx="50%" cy="50%" innerRadius={42} outerRadius={60} dataKey="value" paddingAngle={3} startAngle={90} endAngle={-270} stroke="none">
