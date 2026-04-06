@@ -148,7 +148,7 @@ export function GeneralCharts({
 
       case "completion-donut":
         return (
-          <Card className="glass-card h-full">
+          <Card className="glass-card h-full flex flex-col">
             <CardHeader className="pb-0">
               <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
