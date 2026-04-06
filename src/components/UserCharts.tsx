@@ -123,14 +123,14 @@ export function UserCharts({ data }: UserChartsProps) {
     switch (id) {
       case "radar":
         return (
-          <Card className="glass-card h-full">
+           <Card className="glass-card h-full flex flex-col">
             <CardHeader className="pb-0">
               <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" data-swapy-handle />
                 Perfil del Estudiante
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-2 pb-4">
+            <CardContent className="pt-2 pb-4 flex-1">
               <div className="h-56 sm:h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
