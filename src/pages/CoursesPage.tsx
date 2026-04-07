@@ -12,7 +12,8 @@ import { CourseMessaging } from "@/components/CourseMessaging";
 import { useCourseAnalytics } from "@/hooks/use-course-analytics";
 import { motion, AnimatePresence } from "framer-motion";
 import { exportCourseToCSV, exportCourseToPDF } from "@/lib/export-utils";
-import { MoodleConfig } from "@/lib/moodle-api";
+import { MoodleConfig, ActivityCompletionReport as ACReport } from "@/lib/moodle-api";
+import { useState } from "react";
 
 const CoursesPage = () => {
   const {
@@ -33,6 +34,7 @@ const CoursesPage = () => {
   } = useCourseAnalytics();
 
   const { connect, disconnect, configUrl } = useMoodleConnection();
+  const [activityCompletionData, setActivityCompletionData] = useState<ACReport | null>(null);
 
   if (!isConnected) {
     return (
@@ -232,7 +234,7 @@ const CoursesPage = () => {
             {courseData && (
               <div className="grid grid-cols-1 gap-4">
                 <GraderReport courseId={selectedCourse.id} courseName={selectedCourse.fullname} />
-                <ActivityCompletionReport courseId={selectedCourse.id} courseName={selectedCourse.fullname} />
+                <ActivityCompletionReport courseId={selectedCourse.id} courseName={selectedCourse.fullname} onDataLoaded={setActivityCompletionData} />
               </div>
             )}
 
@@ -245,6 +247,7 @@ const CoursesPage = () => {
                   allStudentsBasic={courseData.allStudentsBasic || courseData.students}
                   courseName={selectedCourse.fullname}
                   config={cfg}
+                  activityCompletionData={activityCompletionData}
                 />
               ) : null;
             })()}

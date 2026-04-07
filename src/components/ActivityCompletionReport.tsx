@@ -10,6 +10,7 @@ import { toast } from "sonner";
 interface Props {
   courseId: number;
   courseName: string;
+  onDataLoaded?: (data: ACReport) => void;
 }
 
 function getConfig(): MoodleConfig | null {
@@ -17,7 +18,7 @@ function getConfig(): MoodleConfig | null {
   return saved ? JSON.parse(saved) : null;
 }
 
-export function ActivityCompletionReport({ courseId, courseName }: Props) {
+export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }: Props) {
   const [data, setData] = useState<ACReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export function ActivityCompletionReport({ courseId, courseName }: Props) {
     try {
       const result = await getActivityCompletionReport(cfg, courseId);
       setData(result);
+      onDataLoaded?.(result);
     } catch (e: any) {
       setError(e.message);
     } finally {
