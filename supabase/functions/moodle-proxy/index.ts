@@ -1030,16 +1030,60 @@ serve(async (req) => {
           return !roles.includes("editingteacher") && !roles.includes("teacher") && !roles.includes("manager");
         });
 
-        // Get activities list from first student (or course contents)
+        // Get activities list from course contents
         let activities: { cmid: number; name: string; modname: string }[] = [];
         const contents = await callMoodle("core_course_get_contents", {
           courseid: String(courseId),
         }).catch(() => []);
+        
+        // Build a map of all modules by cmid for name lookup
+        const moduleMap = new Map<number, { name: string; modname: string }>();
         for (const section of contents) {
           for (const mod of section.modules || []) {
+            moduleMap.set(mod.id, { name: mod.name, modname: mod.modname });
             if (mod.completion && mod.completion > 0) {
               activities.push({ cmid: mod.id, name: mod.name, modname: mod.modname });
             }
+          }
+        }
+
+        // Moodle 4.0 fallback: if no activities found via completion field,
+        // try getting them from the first student's completion status
+        if (activities.length === 0 && students.length > 0) {
+          try {
+            const probe = await callMoodle("core_completion_get_activities_completion_status", {
+              courseid: String(courseId),
+              userid: String(students[0].id),
+            });
+            const statuses = probe.statuses || [];
+            for (const st of statuses) {
+              const modInfo = moduleMap.get(st.cmid);
+              activities.push({
+                cmid: st.cmid,
+                name: modInfo?.name || `Activity ${st.cmid}`,
+                modname: modInfo?.modname || st.modname || "unknown",
+              });
+            }
+          } catch {
+            // If that also fails, try course completion criteria
+            try {
+              const cc = await callMoodle("core_completion_get_course_completion_status", {
+                courseid: String(courseId),
+                userid: String(students[0].id),
+              });
+              const completions = cc?.completionstatus?.completions || [];
+              for (const entry of completions) {
+                const name = entry?.details?.criteria;
+                if (typeof name !== "string") continue;
+                // Try to find matching module
+                for (const [cmid, info] of moduleMap.entries()) {
+                  if (normalizeText(info.name) === normalizeText(name)) {
+                    activities.push({ cmid, name: info.name, modname: info.modname });
+                    break;
+                  }
+                }
+              }
+            } catch {}
           }
         }
 
