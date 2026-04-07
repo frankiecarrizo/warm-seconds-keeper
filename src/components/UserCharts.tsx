@@ -22,7 +22,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 ];
 
 export function UserCharts({ data }: UserChartsProps) {
-  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout } = useSwapy({
+  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
     storageKey: "user-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
   });
@@ -290,7 +290,7 @@ export function UserCharts({ data }: UserChartsProps) {
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
-        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} />
+        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} onHideAll={hideAll} />
       </div>
       <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 items-stretch">
         {visibleWidgets.map((w) => {

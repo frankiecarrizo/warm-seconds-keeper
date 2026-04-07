@@ -32,24 +32,23 @@ interface GeneralChartsProps {
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: false },
-  { id: "completion-donut", label: "Finalización Global", visible: false },
-  { id: "user-status", label: "Estado de Usuarios", visible: false },
-  { id: "access-donut", label: "Acceso a la Plataforma", visible: false },
-  { id: "logins-by-month", label: "Ingresos por Mes", visible: false },
-  { id: "heatmap", label: "Mapa de Calor", visible: false },
-  { id: "top-completions", label: "Top 5 — Finalizaciones", visible: false },
-  { id: "categories", label: "Cursos por Categoría", visible: false },
-  { id: "all-courses", label: "Todos los Cursos", visible: false },
+  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: true },
+  { id: "completion-donut", label: "Finalización Global", visible: true },
+  { id: "user-status", label: "Estado de Usuarios", visible: true },
+  { id: "access-donut", label: "Acceso a la Plataforma", visible: true },
+  { id: "logins-by-month", label: "Ingresos por Mes", visible: true },
+  { id: "heatmap", label: "Mapa de Calor", visible: true },
+  { id: "top-completions", label: "Top 5 — Finalizaciones", visible: true },
+  { id: "categories", label: "Cursos por Categoría", visible: true },
+  { id: "all-courses", label: "Todos los Cursos", visible: true },
 ];
 
 const FULL_WIDTH_IDS = new Set(["top-completions", "categories", "all-courses", "logins-by-month", "heatmap"]);
 
 export function GeneralCharts(props: GeneralChartsProps) {
-  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll } = useSwapy({
+  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
     storageKey: "general-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
-    forceHideAll: props.isFreshLoad,
   });
 
   // Each widget component is only mounted when visible.
@@ -82,7 +81,7 @@ export function GeneralCharts(props: GeneralChartsProps) {
   return (
     <div className="space-y-3">
       <div className="flex justify-center">
-        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} />
+        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} onHideAll={hideAll} />
       </div>
       <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2 items-stretch">
         {visibleWidgets.map((w) => {
