@@ -9,10 +9,52 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Send, Users, BookOpen, User, Search, Loader2, CheckCircle2, X } from "lucide-react";
+import { Send, Users, BookOpen, User, Search, Loader2, CheckCircle2, X, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { searchUsers, searchCourses, MoodleUser, callProxy } from "@/lib/moodle-api";
 
+// ── Plantillas por contexto ──────────────────────────────────
+const COURSE_TEMPLATES = [
+  { label: "Bienvenida", text: "Hola {nombre}, te damos la bienvenida al curso {curso}. ¡Esperamos que aproveches al máximo esta experiencia!" },
+  { label: "Recordatorio", text: "Hola {nombre}, te recordamos que tenés actividades pendientes en el curso {curso}. ¡No te quedes atrás!" },
+  { label: "Inactividad", text: "Hola {nombre}, notamos que aún no ingresaste al curso {curso}. Te invitamos a que comiences cuanto antes." },
+  { label: "Felicitaciones", text: "Hola {nombre}, ¡felicitaciones por tu avance en {curso}! Seguí así." },
+  { label: "Aviso general", text: "Hola {nombre}, hay novedades importantes en el curso {curso}. Por favor, revisá las últimas actualizaciones." },
+];
+
+const USER_TEMPLATES = [
+  { label: "Consulta académica", text: "Hola {nombre}, nos comunicamos para hacerte una consulta sobre tu desempeño académico. ¿Podrías ponerte en contacto?" },
+  { label: "Seguimiento", text: "Hola {nombre}, queremos saber cómo estás avanzando en tus cursos. Si necesitás ayuda, no dudes en escribirnos." },
+  { label: "Documentación", text: "Hola {nombre}, te recordamos que tenés documentación pendiente de presentar. Por favor, regularizala a la brevedad." },
+  { label: "Felicitaciones", text: "Hola {nombre}, queremos felicitarte por tu excelente desempeño. ¡Seguí así!" },
+];
+
+const ALL_TEMPLATES = [
+  { label: "Aviso institucional", text: "Estimados usuarios, les informamos que hay una novedad institucional importante. Por favor, revisen las novedades en la plataforma." },
+  { label: "Mantenimiento", text: "Estimados usuarios, les informamos que la plataforma estará en mantenimiento el día [FECHA]. Disculpen las molestias." },
+  { label: "Nuevo curso", text: "Estimados usuarios, les informamos que se ha habilitado un nuevo curso en la plataforma. ¡Los invitamos a inscribirse!" },
+  { label: "Recordatorio general", text: "Estimados usuarios, les recordamos completar las actividades pendientes en sus cursos. ¡No se queden atrás!" },
+];
+
+function TemplateBank({ templates, onSelect }: { templates: { label: string; text: string }[]; onSelect: (text: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+        <FileText className="h-3 w-3" /> Plantillas predefinidas:
+      </p>
+      <div className="flex gap-1.5 flex-wrap">
+        {templates.map((t, i) => (
+          <Button key={i} variant="outline" size="sm" className="text-xs h-7" onClick={() => onSelect(t.text)}>
+            {t.label}
+          </Button>
+        ))}
+      </div>
+      <p className="text-[10px] text-muted-foreground">
+        Variables disponibles: <code className="bg-muted px-1 rounded">{"{nombre}"}</code> <code className="bg-muted px-1 rounded">{"{curso}"}</code>
+      </p>
+    </div>
+  );
+}
 
 export default function NotificationsPage() {
   const { isConnected, connect, disconnect, configUrl } = useMoodleConnection();
@@ -76,6 +118,10 @@ type CourseFilter = "all" | "never_accessed" | "not_completed" | "completed";
 const NAMES_PER_ROW = 6;
 const VISIBLE_ROWS = 2;
 
+function resolveVars(text: string, vars: Record<string, string>) {
+  return text.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? `{${key}}`);
+}
+
 function SendByCourse() {
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState<any[]>([]);
@@ -125,16 +171,35 @@ function SendByCourse() {
     }
   };
 
+  const hasVariables = /\{nombre\}/.test(message);
+
   const handleSend = async () => {
     if (!message.trim() || !filteredUsers.length) return;
     setSending(true);
     try {
-      const userIds = filteredUsers.map((u) => u.id);
-      const res = await callProxy("send_message", { userIds, text: message });
-      if (res?.hasErrors && res.errors?.length) {
-        toast.warning(`Enviado con ${res.errors.length} errores: ${res.errors[0]}`);
+      if (hasVariables) {
+        const errors: string[] = [];
+        let sent = 0;
+        for (const user of filteredUsers) {
+          const text = resolveVars(message, { nombre: user.fullname, curso: selectedCourse?.fullname || "" });
+          try {
+            const res = await callProxy("send_message", { userIds: [user.id], text });
+            if (res?.hasErrors) errors.push(`${user.fullname}: ${res.errors?.[0]}`);
+            else sent++;
+          } catch (e: any) {
+            errors.push(`${user.fullname}: ${e.message}`);
+          }
+        }
+        if (errors.length) toast.warning(`Enviado a ${sent}, ${errors.length} errores.`);
+        else toast.success(`Mensaje personalizado enviado a ${sent} estudiantes.`);
       } else {
-        toast.success(`Mensaje enviado a ${userIds.length} estudiantes.`);
+        const userIds = filteredUsers.map((u) => u.id);
+        const res = await callProxy("send_message", { userIds, text: message });
+        if (res?.hasErrors && res.errors?.length) {
+          toast.warning(`Enviado con ${res.errors.length} errores: ${res.errors[0]}`);
+        } else {
+          toast.success(`Mensaje enviado a ${userIds.length} estudiantes.`);
+        }
       }
       setMessage("");
     } catch (e: any) {
@@ -264,12 +329,23 @@ function SendByCourse() {
               </>
             )}
 
+            <TemplateBank templates={COURSE_TEMPLATES} onSelect={setMessage} />
+
             <Textarea
-              placeholder="Escribe tu mensaje aquí..."
+              placeholder="Escribe tu mensaje o seleccioná una plantilla..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
             />
+
+            {message && filteredUsers.length > 0 && hasVariables && (
+              <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1">
+                <p className="font-medium text-muted-foreground">Vista previa:</p>
+                <p className="whitespace-pre-wrap text-foreground">
+                  {resolveVars(message, { nombre: filteredUsers[0].fullname, curso: selectedCourse?.fullname || "" })}
+                </p>
+              </div>
+            )}
 
             <Button onClick={handleSend} disabled={sending || !message.trim() || !filteredUsers.length} className="gap-2">
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -303,11 +379,14 @@ function SendByUser() {
     }
   };
 
+  const hasVariables = /\{nombre\}/.test(message);
+
   const handleSend = async () => {
     if (!message.trim() || !selectedUser) return;
     setSending(true);
     try {
-      const res = await callProxy("send_message", { userIds: [selectedUser.id], text: message });
+      const text = hasVariables ? resolveVars(message, { nombre: selectedUser.fullname }) : message;
+      const res = await callProxy("send_message", { userIds: [selectedUser.id], text });
       if (res?.hasErrors && res.errors?.length) {
         toast.warning(`Error: ${res.errors[0]}`);
       } else {
@@ -367,12 +446,23 @@ function SendByUser() {
               </Button>
             </div>
 
+            <TemplateBank templates={USER_TEMPLATES} onSelect={setMessage} />
+
             <Textarea
-              placeholder="Escribe tu mensaje aquí..."
+              placeholder="Escribe tu mensaje o seleccioná una plantilla..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
             />
+
+            {message && selectedUser && hasVariables && (
+              <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1">
+                <p className="font-medium text-muted-foreground">Vista previa:</p>
+                <p className="whitespace-pre-wrap text-foreground">
+                  {resolveVars(message, { nombre: selectedUser.fullname })}
+                </p>
+              </div>
+            )}
 
             <Button onClick={handleSend} disabled={sending || !message.trim()} className="gap-2">
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -444,8 +534,10 @@ function SendToAll() {
               {userCount} usuarios activos serán notificados.
             </p>
 
+            <TemplateBank templates={ALL_TEMPLATES} onSelect={setMessage} />
+
             <Textarea
-              placeholder="Escribe tu mensaje aquí..."
+              placeholder="Escribe tu mensaje o seleccioná una plantilla..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
