@@ -2,6 +2,25 @@ import { UserFullData, CourseOverviewData, SiteInfo, BasicCourse, CourseEnrollme
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+/** Read the cached site name from localStorage, fallback to "Moodle" */
+function getCachedSiteName(): string {
+  try {
+    const raw = localStorage.getItem("moodle-site-info");
+    if (raw) {
+      const info = JSON.parse(raw);
+      if (info.sitename) return info.sitename;
+    }
+  } catch {}
+  return "Moodle";
+}
+
+/** Cache site info in localStorage for use in exports */
+export function cacheSiteInfo(siteInfo: SiteInfo) {
+  try {
+    localStorage.setItem("moodle-site-info", JSON.stringify(siteInfo));
+  } catch {}
+}
+
 // ═══════════════════════════════════════════════════════════════
 // GENERAL / SITE EXPORTS
 // ═══════════════════════════════════════════════════════════════
@@ -19,7 +38,7 @@ export function exportGeneralToCSV(data: GeneralExportData) {
   const summaryMap = new Map(enrollmentSummaries.map(s => [s.courseId, s]));
   const categoryMap = new Map(categories.map(c => [c.id, c]));
 
-  let csv = "Informe General del Sitio - Learner ARC\n\n";
+  let csv = `Informe General del Sitio - ${siteInfo.sitename}\n\n`;
   csv += `Sitio,"${siteInfo.sitename}"\n`;
   csv += `URL,"${siteInfo.siteurl}"\n`;
   csv += `Versión Moodle,"${siteInfo.release || siteInfo.version}"\n`;
@@ -74,7 +93,7 @@ export function exportGeneralToPDF(data: GeneralExportData) {
   doc.setFillColor(...COLORS.primary);
   doc.rect(0, 40, pageWidth, 3, "F");
   doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
-  doc.text("Learner ARC", 20, 18);
+  doc.text(siteInfo.sitename, 20, 18);
   doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(180, 200, 210);
   doc.text("Informe General del Sitio", 20, 30);
   const dateStr = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
@@ -195,7 +214,7 @@ export function exportGeneralToPDF(data: GeneralExportData) {
       doc.setFillColor(...COLORS.dark); doc.rect(0, 0, pageWidth, 40, "F");
       doc.setFillColor(...COLORS.primary); doc.rect(0, 40, pageWidth, 3, "F");
       doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
-      doc.text("Learner ARC", 20, 18);
+      doc.text(siteInfo.sitename, 20, 18);
       doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(180, 200, 210);
       doc.text("Informe General del Sitio", 20, 30);
     },
@@ -253,7 +272,8 @@ const COLORS = {
   danger: [239, 68, 68] as [number, number, number],
 };
 
-function drawHeader(doc: jsPDF, pageWidth: number) {
+function drawHeader(doc: jsPDF, pageWidth: number, subtitle = "Informe de Analítica de Usuario") {
+  const siteName = getCachedSiteName();
   // Header bar
   doc.setFillColor(...COLORS.dark);
   doc.rect(0, 0, pageWidth, 40, "F");
@@ -266,13 +286,13 @@ function drawHeader(doc: jsPDF, pageWidth: number) {
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.white);
-  doc.text("Learner ARC", 20, 18);
+  doc.text(siteName, 20, 18);
 
   // Subtitle
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(180, 200, 210);
-  doc.text("Informe de Analítica de Usuario", 20, 30);
+  doc.text(subtitle, 20, 30);
 
   // Date
   const dateStr = new Date().toLocaleDateString("es-AR", {
@@ -292,7 +312,7 @@ function drawFooter(doc: jsPDF, pageWidth: number, pageNum: number, totalPages: 
   doc.setFontSize(7);
   doc.setTextColor(...COLORS.gray);
   doc.setFont("helvetica", "normal");
-  doc.text("Generado por Learner ARC — Analítica Moodle", 20, y + 5);
+  doc.text(`Generado por ${getCachedSiteName()} — Analítica Moodle`, 20, y + 5);
   doc.text(`Página ${pageNum} de ${totalPages}`, pageWidth - 20, y + 5, { align: "right" });
 }
 
@@ -585,6 +605,8 @@ export function exportCourseToPDF(courseName: string, data: CourseOverviewData, 
   const margin = 20;
   const allStudents = data.allStudentsBasic || [];
 
+  const siteName = getCachedSiteName();
+
   // ─── PAGE 1 ───
   // Header
   doc.setFillColor(...COLORS.dark);
@@ -595,7 +617,7 @@ export function exportCourseToPDF(courseName: string, data: CourseOverviewData, 
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.white);
-  doc.text("Learner ARC", 20, 18);
+  doc.text(siteName, 20, 18);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
@@ -710,7 +732,7 @@ export function exportCourseToPDF(courseName: string, data: CourseOverviewData, 
       doc.setFillColor(...COLORS.primary);
       doc.rect(0, 40, pageWidth, 3, "F");
       doc.setFontSize(22); doc.setFont("helvetica", "bold"); doc.setTextColor(...COLORS.white);
-      doc.text("Learner ARC", 20, 18);
+      doc.text(siteName, 20, 18);
       doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(180, 200, 210);
       doc.text("Informe de Analítica de Curso", 20, 30);
     },
