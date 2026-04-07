@@ -19,7 +19,7 @@ export function useMoodleConnection() {
 
 export function MoodleConnectionProvider({ children }: { children: React.ReactNode }) {
   const [configUrl, setConfigUrl] = useState(() => localStorage.getItem("moodle-url") || "");
-  const [isConnected, setIsConnected] = useState(() => !!localStorage.getItem("moodle-url"));
+  const [isConnected, setIsConnected] = useState(() => !!localStorage.getItem("moodle-url") && !!localStorage.getItem("moodle-session"));
 
   const connect = useCallback((url: string, token: string) => {
     // Extract token from full URL if user pasted one
