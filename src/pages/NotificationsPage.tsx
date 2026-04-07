@@ -33,7 +33,7 @@ export default function NotificationsPage() {
 
   if (!isConnected) {
     return (
-      <div className="p-6 max-w-md mx-auto mt-20">
+      <div className="max-w-md mx-auto mt-10 sm:mt-20">
         <MoodleConnectForm onConnect={connect} isConnected={isConnected} onDisconnect={disconnect} configUrl={configUrl} />
       </div>
     );
