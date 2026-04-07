@@ -129,8 +129,17 @@ export function ActivityCompletionReport({ courseId, courseName }: Props) {
                     ))}
                   </tr>
                 </thead>
+  const sortedStudents = [...data.students].sort((a, b) => {
+    const countCompleted = (s: typeof a) =>
+      data.activities.reduce((sum, act) => {
+        const state = s.completions[act.cmid];
+        return sum + (state === 1 || state === 2 ? 1 : 0);
+      }, 0);
+    return countCompleted(a) - countCompleted(b);
+  });
+
                 <tbody>
-                  {data.students.map(s => (
+                  {sortedStudents.map(s => (
                     <tr key={s.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="sticky left-0 bg-card z-10 p-2 font-medium">{s.fullname}</td>
                       {data.activities.map(a => (
