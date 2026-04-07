@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, CheckCircle2, XCircle, MinusCircle, Download, ClipboardList } from "lucide-react";
+import { Loader2, Download, ClipboardList, Square, CheckSquare, XSquare } from "lucide-react";
 import { getActivityCompletionReport, ActivityCompletionReport as ACReport, MoodleConfig } from "@/lib/moodle-api";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -45,7 +45,10 @@ export function ActivityCompletionReport({ courseId, courseName }: Props) {
       s.email,
       ...data.activities.map(a => {
         const state = s.completions[a.cmid];
-        return state === 1 || state === 2 ? "✓" : state === 3 ? "✗" : "-";
+        if (state === 1 || state === 2) return "✓";
+        if (state === 3) return "✗";
+        if (state === 0) return "☐";
+        return "";
       }),
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -60,9 +63,10 @@ export function ActivityCompletionReport({ courseId, courseName }: Props) {
   }, [data, courseName]);
 
   const getIcon = (state: number | undefined) => {
-    if (state === 1 || state === 2) return <CheckCircle2 className="h-4 w-4 text-success" />;
-    if (state === 3) return <XCircle className="h-4 w-4 text-destructive" />;
-    return <MinusCircle className="h-4 w-4 text-muted-foreground/40" />;
+    if (state === 1 || state === 2) return <CheckSquare className="h-4 w-4 text-success" />;
+    if (state === 3) return <XSquare className="h-4 w-4 text-destructive" />;
+    if (state === 0) return <Square className="h-4 w-4 text-muted-foreground/50" />;
+    return <Square className="h-4 w-4 text-muted-foreground/25" />;
   };
 
   if (!data && !loading) {
