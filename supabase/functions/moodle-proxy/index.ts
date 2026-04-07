@@ -1035,20 +1035,52 @@ serve(async (req) => {
         const contents = await callMoodle("core_course_get_contents", {
           courseid: String(courseId),
         }).catch(() => []);
-        
-        // Build a map of all modules by cmid for name lookup
-        const moduleMap = new Map<number, { name: string; modname: string }>();
+
+        const moduleMap = new Map<number, { cmid: number; name: string; modname: string }>();
+        const quizActivities: { cmid: number; name: string; modname: string }[] = [];
+        const seenActivityIds = new Set<number>();
+
+        const pushActivity = (activity: { cmid: number; name: string; modname: string } | null | undefined) => {
+          if (!activity || seenActivityIds.has(activity.cmid)) return;
+          seenActivityIds.add(activity.cmid);
+          activities.push(activity);
+        };
+
         for (const section of contents) {
           for (const mod of section.modules || []) {
-            moduleMap.set(mod.id, { name: mod.name, modname: mod.modname });
-            if (mod.completion && mod.completion > 0) {
-              activities.push({ cmid: mod.id, name: mod.name, modname: mod.modname });
+            const activity = {
+              cmid: mod.id,
+              name: mod.name || `Actividad ${mod.id}`,
+              modname: mod.modname || "unknown",
+            };
+
+            moduleMap.set(mod.id, activity);
+
+            if (activity.modname === "quiz") {
+              quizActivities.push(activity);
+            }
+
+            const hasTrackedCompletion =
+              (typeof mod.completion === "number" && mod.completion > 0) ||
+              mod.completiondata?.hascompletion === true ||
+              mod.completiondata?.state !== undefined ||
+              mod.completiondata?.valueused !== undefined ||
+              mod.completiondata?.completionstate !== undefined;
+
+            if (hasTrackedCompletion) {
+              pushActivity(activity);
             }
           }
         }
 
-        // Moodle 4.0 fallback: if no activities found via completion field,
-        // try getting them from the first student's completion status
+        // Moodle 4.0 fallback: if completion flags are missing, at least show quizzes.
+        if (activities.length === 0 && quizActivities.length > 0) {
+          for (const quizActivity of quizActivities) {
+            pushActivity(quizActivity);
+          }
+        }
+
+        // Extra fallback: infer activities from the first student's completion data.
         if (activities.length === 0 && students.length > 0) {
           try {
             const probe = await callMoodle("core_completion_get_activities_completion_status", {
@@ -1057,15 +1089,15 @@ serve(async (req) => {
             });
             const statuses = probe.statuses || [];
             for (const st of statuses) {
-              const modInfo = moduleMap.get(st.cmid);
-              activities.push({
-                cmid: st.cmid,
-                name: modInfo?.name || `Activity ${st.cmid}`,
-                modname: modInfo?.modname || st.modname || "unknown",
-              });
+              pushActivity(
+                moduleMap.get(st.cmid) || {
+                  cmid: st.cmid,
+                  name: `Actividad ${st.cmid}`,
+                  modname: st.modname || "unknown",
+                }
+              );
             }
           } catch {
-            // If that also fails, try course completion criteria
             try {
               const cc = await callMoodle("core_completion_get_course_completion_status", {
                 courseid: String(courseId),
@@ -1073,17 +1105,26 @@ serve(async (req) => {
               });
               const completions = cc?.completionstatus?.completions || [];
               for (const entry of completions) {
-                const name = entry?.details?.criteria;
-                if (typeof name !== "string") continue;
-                // Try to find matching module
-                for (const [cmid, info] of moduleMap.entries()) {
-                  if (normalizeText(info.name) === normalizeText(name)) {
-                    activities.push({ cmid, name: info.name, modname: info.modname });
+                const criteriaName = entry?.details?.criteria;
+                if (typeof criteriaName !== "string") continue;
+
+                for (const activity of moduleMap.values()) {
+                  if (normalizeText(activity.name) === normalizeText(criteriaName)) {
+                    pushActivity(activity);
                     break;
                   }
                 }
               }
             } catch {}
+          }
+        }
+
+        // If there are too many tracked items, keep quizzes only so the table stays usable.
+        if (activities.length > 20 && quizActivities.length > 0) {
+          const quizIds = new Set(quizActivities.map((activity) => activity.cmid));
+          const filteredQuizActivities = activities.filter((activity) => quizIds.has(activity.cmid));
+          if (filteredQuizActivities.length > 0) {
+            activities = filteredQuizActivities;
           }
         }
 
