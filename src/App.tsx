@@ -12,6 +12,7 @@ import CoursesPage from "./pages/CoursesPage.tsx";
 import GeneralPage from "./pages/GeneralPage.tsx";
 import SsoLogin from "./pages/SsoLogin.tsx";
 import NotificationsPage from "./pages/NotificationsPage.tsx";
+import CertificatesPage from "./pages/CertificatesPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,7 @@ const App = () => (
             <Route path="/cursos" element={<AppLayout><CoursesPage /></AppLayout>} />
             <Route path="/estudiantes" element={<AppLayout><Index /></AppLayout>} />
             <Route path="/notificaciones" element={<AppLayout><NotificationsPage /></AppLayout>} />
+            <Route path="/certificados" element={<AppLayout><CertificatesPage /></AppLayout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
