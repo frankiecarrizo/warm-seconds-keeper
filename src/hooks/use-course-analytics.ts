@@ -81,9 +81,11 @@ export function useCourseAnalytics() {
     setError(null);
 
     try {
+      // Send flattened data to reduce tokens and latency
+      const flattenedData = flattenCourseDataForAI(selectedCourse.fullname, courseData);
       await streamCourseOverviewAnalysis({
         courseName: selectedCourse.fullname,
-        courseData,
+        courseData: flattenedData as any,
         onDelta: (text) => setAnalysis((prev) => prev + text),
         onDone: () => setAnalysisLoading(false),
         onError: (err) => {
