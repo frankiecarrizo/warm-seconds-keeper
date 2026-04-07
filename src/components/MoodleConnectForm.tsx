@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Globe, Key, Plug, Loader2, LogOut, GraduationCap, BarChart3, Users, BookOpen } from "lucide-react";
+import { Globe, Key, Plug, Loader2, LogOut, GraduationCap, BarChart3, Users, BookOpen, PieChart, TrendingUp, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import loginIllustration from "@/assets/login-illustration.png";
 
 interface MoodleConnectFormProps {
   onConnect: (url: string, token: string) => void;
@@ -13,11 +14,23 @@ interface MoodleConnectFormProps {
   configUrl?: string;
 }
 
+const bgShapes = [
+  { x: "5%", y: "10%", size: 180, delay: 0, duration: 20 },
+  { x: "80%", y: "5%", size: 120, delay: 2, duration: 25 },
+  { x: "70%", y: "70%", size: 200, delay: 4, duration: 22 },
+  { x: "10%", y: "75%", size: 140, delay: 1, duration: 18 },
+  { x: "50%", y: "85%", size: 100, delay: 3, duration: 24 },
+  { x: "90%", y: "40%", size: 90, delay: 5, duration: 20 },
+];
+
 const floatingIcons = [
-  { Icon: BarChart3, x: "10%", y: "20%", delay: 0, size: 20 },
-  { Icon: Users, x: "85%", y: "15%", delay: 0.5, size: 18 },
-  { Icon: BookOpen, x: "75%", y: "75%", delay: 1, size: 22 },
-  { Icon: GraduationCap, x: "15%", y: "80%", delay: 1.5, size: 16 },
+  { Icon: BarChart3, x: "8%", y: "25%", delay: 0, size: 24 },
+  { Icon: Users, x: "88%", y: "18%", delay: 0.8, size: 22 },
+  { Icon: BookOpen, x: "82%", y: "72%", delay: 1.6, size: 26 },
+  { Icon: GraduationCap, x: "12%", y: "78%", delay: 2.4, size: 20 },
+  { Icon: PieChart, x: "92%", y: "50%", delay: 0.4, size: 18 },
+  { Icon: TrendingUp, x: "5%", y: "50%", delay: 1.2, size: 20 },
+  { Icon: Activity, x: "50%", y: "8%", delay: 2, size: 22 },
 ];
 
 export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, configUrl }: MoodleConnectFormProps) {
@@ -59,21 +72,49 @@ export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, config
   }
 
   return (
-    <div className="relative w-full max-w-md mx-auto">
+    <div className="relative w-full max-w-lg mx-auto">
+      {/* Background animated blobs */}
+      {bgShapes.map((shape, i) => (
+        <motion.div
+          key={`blob-${i}`}
+          className="absolute rounded-full bg-primary/[0.04] pointer-events-none"
+          style={{
+            left: shape.x,
+            top: shape.y,
+            width: shape.size,
+            height: shape.size,
+            filter: "blur(40px)",
+          }}
+          animate={{
+            x: [0, 30, -20, 10, 0],
+            y: [0, -20, 15, -10, 0],
+            scale: [1, 1.2, 0.9, 1.1, 1],
+          }}
+          transition={{
+            duration: shape.duration,
+            delay: shape.delay,
+            repeat: Infinity,
+            repeatType: "reverse",
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
       {/* Floating animated icons */}
       {floatingIcons.map(({ Icon, x, y, delay, size }, i) => (
         <motion.div
           key={i}
-          className="absolute text-primary/15 pointer-events-none"
+          className="absolute text-primary/10 pointer-events-none"
           style={{ left: x, top: y }}
           initial={{ opacity: 0, scale: 0 }}
           animate={{
-            opacity: [0, 0.4, 0.2, 0.4],
-            scale: [0.5, 1, 0.9, 1],
-            y: [0, -10, 5, -10],
+            opacity: [0, 0.3, 0.15, 0.3],
+            scale: [0.5, 1, 0.85, 1],
+            y: [0, -15, 8, -15],
+            rotate: [0, 5, -5, 0],
           }}
           transition={{
-            duration: 4,
+            duration: 5,
             delay,
             repeat: Infinity,
             repeatType: "reverse",
@@ -93,44 +134,64 @@ export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, config
           {/* Gradient accent line */}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
 
-          <CardContent className="p-6 sm:p-8 pt-8 sm:pt-10">
-            {/* Logo */}
-            <motion.div
-              className="flex justify-center mb-6"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            >
-              <div className="relative">
-                <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl scale-150" />
-                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
-                  <GraduationCap className="h-8 w-8 text-primary" />
+          <CardContent className="p-8 sm:p-10 pt-10 sm:pt-12">
+            {/* Illustration shown while connecting */}
+            {testing ? (
+              <motion.div
+                className="flex justify-center mb-6"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+              >
+                <motion.img
+                  src={loginIllustration}
+                  alt="Dashboard"
+                  className="w-48 h-auto drop-shadow-lg"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                />
+              </motion.div>
+            ) : (
+              /* Logo */
+              <motion.div
+                className="flex justify-center mb-8"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl scale-150" />
+                  <div className="relative flex h-18 w-18 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+                    <GraduationCap className="h-9 w-9 text-primary" />
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            )}
 
             {/* Title */}
             <motion.div
-              className="text-center mb-6"
+              className="text-center mb-8"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <h1 className="text-2xl font-bold text-foreground mb-1">Moodle AI Analytics</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
+                {testing ? "Conectando..." : "Moodle AI Analytics"}
+              </h1>
               <p className="text-sm text-muted-foreground">
-                Conectá tu campus para comenzar
+                {testing ? "Estableciendo conexión con tu campus" : "Conectá tu campus para comenzar"}
               </p>
             </motion.div>
 
             {/* Form */}
             <motion.form
               onSubmit={handleSubmit}
-              className="space-y-4"
+              className="space-y-5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="moodle-url" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   URL del Campus
                 </Label>
@@ -142,12 +203,13 @@ export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, config
                     placeholder="https://tucampus.edu/moodle"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
+                    className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
                     required
+                    disabled={testing}
                   />
                 </div>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label htmlFor="moodle-token" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Token de Web Service
                 </Label>
@@ -159,14 +221,15 @@ export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, config
                     placeholder="Tu token de API"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
-                    className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
+                    className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
                     required
+                    disabled={testing}
                   />
                 </div>
               </div>
 
-              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
-                <Button type="submit" variant="gradient" className="w-full h-11 text-sm font-semibold" disabled={testing || !url || !token}>
+              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }} className="pt-1">
+                <Button type="submit" variant="gradient" className="w-full h-12 text-sm font-semibold" disabled={testing || !url || !token}>
                   {testing ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -183,7 +246,7 @@ export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, config
             </motion.form>
 
             <motion.p
-              className="text-[11px] text-muted-foreground/60 text-center mt-4"
+              className="text-[11px] text-muted-foreground/60 text-center mt-5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
