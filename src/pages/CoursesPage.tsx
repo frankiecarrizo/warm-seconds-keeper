@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CourseSearch } from "@/components/CourseSearch";
 import { CourseCharts } from "@/components/CourseCharts";
 import { AIAnalysis } from "@/components/AIAnalysis";
+import { ActivityCompletionReport } from "@/components/ActivityCompletionReport";
+import { GraderReport } from "@/components/GraderReport";
 import { CourseMessaging } from "@/components/CourseMessaging";
 import { useCourseAnalytics } from "@/hooks/use-course-analytics";
 import { motion, AnimatePresence } from "framer-motion";
