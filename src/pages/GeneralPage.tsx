@@ -264,7 +264,7 @@ const GeneralPage = () => {
 
     return (
       <Card className="glass-card overflow-hidden">
-        <CardContent className="p-4 text-center flex flex-col items-center justify-center min-h-[88px] gap-2">
+        <CardContent className="p-4 text-center flex flex-col items-center justify-center min-h-[88px] gap-1.5">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
           <AnimatePresence mode="wait">
             <motion.p
@@ -273,7 +273,7 @@ const GeneralPage = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3 }}
-              className="text-[10px] leading-tight text-muted-foreground text-center px-1"
+              className="text-xs leading-snug text-muted-foreground text-center px-1"
             >
               {LOADING_MESSAGES[msgIdx]}
             </motion.p>
