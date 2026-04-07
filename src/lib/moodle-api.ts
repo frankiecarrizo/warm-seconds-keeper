@@ -230,6 +230,36 @@ export const getLoginLogs = async (config: MoodleConfig) => {
   return callProxy(config, "get_login_logs");
 };
 
+export interface ActivityCompletionReport {
+  activities: { cmid: number; name: string; modname: string }[];
+  students: {
+    id: number;
+    fullname: string;
+    email: string;
+    completions: Record<number, number>; // cmid -> state (0,1,2,3)
+  }[];
+}
+
+export interface GraderReport {
+  gradeItems: { id: number; itemname: string; grademax: number }[];
+  students: {
+    id: number;
+    fullname: string;
+    email: string;
+    grades: Record<number, { grade: number | null; grademax: number }>;
+    courseTotal: number | null;
+    courseTotalMax: number;
+  }[];
+}
+
+export const getActivityCompletionReport = async (config: MoodleConfig, courseId: number): Promise<ActivityCompletionReport> => {
+  return callProxy(config, "get_activity_completion_report", { courseId });
+};
+
+export const getGraderReport = async (config: MoodleConfig, courseId: number): Promise<GraderReport> => {
+  return callProxy(config, "get_grader_report", { courseId });
+};
+
 // ═══════════════════════════════════════════════════════════════
 // Missing types referenced by hooks/components
 // ═══════════════════════════════════════════════════════════════
