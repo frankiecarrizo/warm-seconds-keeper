@@ -1513,6 +1513,7 @@ case "get_activity_completion_report": {
 
         const certModules: any[] = [];
         const seenCertIds = new Set<string>();
+        let enrolledUsersCache: any[] | null = null;
 
         const addCert = (id: number, cmid: number, name: string, type: string) => {
           const key = `${type}-${id}`;
@@ -1520,6 +1521,21 @@ case "get_activity_completion_report": {
             seenCertIds.add(key);
             certModules.push({ id, cmid, name, type });
           }
+        };
+
+        const getEnrolledUsers = async () => {
+          if (enrolledUsersCache) return enrolledUsersCache;
+          try {
+            const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
+              courseid: String(courseId),
+            });
+            enrolledUsersCache = Array.isArray(enrolled) ? enrolled : [];
+            console.log(`[certs] enrolled users fetched: ${enrolledUsersCache.length}`);
+          } catch (e: any) {
+            enrolledUsersCache = [];
+            console.log("[certs] enrolled users fetch failed:", e?.message);
+          }
+          return enrolledUsersCache;
         };
 
         // Method 1: core_course_get_contents
@@ -1553,58 +1569,80 @@ case "get_activity_completion_report": {
           console.log("[certs] mod_customcert_get_certificates_by_courses not available:", e?.message);
         }
 
-        // Method 3: gradebook scan
+        // Method 3: gradebook scan for current token user
         try {
           const grades = await callMoodle("gradereport_user_get_grade_items", {
             courseid: String(courseId),
           });
           const items = grades?.usergrades?.[0]?.gradeitems || [];
-          console.log(`[certs] gradebook has ${items.length} items`);
+          console.log(`[certs] gradebook has ${items.length} items for token user`);
           for (const item of items) {
             if (item.itemmodule === "customcert" || item.itemmodule === "certificate") {
-              addCert(item.iteminstance, item.cmid || 0, item.itemname || "Certificado", item.itemmodule);
+              addCert(item.iteminstance, item.cmid || 0, stripHtml(item.itemname || "Certificado"), item.itemmodule);
             }
           }
         } catch (e: any) {
           console.log("[certs] Gradebook fallback failed:", e?.message);
         }
 
-        // Method 4: completion status - lists ALL activity modules including certs
-        try {
-          // We need a user ID; get first enrolled user
-          const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
-            courseid: String(courseId),
-            "options[0][name]": "limitnumber",
-            "options[0][value]": "1",
-          });
-          const sampleUserId = enrolled?.[0]?.id;
-          if (sampleUserId) {
-            const completion = await callMoodle("core_completion_get_activities_completion_status", {
-              courseid: String(courseId),
-              userid: String(sampleUserId),
-            });
-            for (const act of (completion?.statuses || [])) {
-              if (act.modname === "customcert" || act.modname === "certificate") {
-                // cmid is the course module id, we need the instance id too
-                // Try to get module details
-                try {
-                  const modInfo = await callMoodle("core_course_get_course_module", {
-                    cmid: String(act.cmid),
-                  });
-                  const cm = modInfo?.cm;
-                  if (cm) {
-                    addCert(cm.instance, cm.id, cm.name || "Certificado", cm.modname || "customcert");
+        // Method 4: gradebook scan per enrolled user (useful on Moodle 4.0)
+        if (certModules.length === 0) {
+          try {
+            const enrolledUsers = await getEnrolledUsers();
+            for (const user of enrolledUsers.slice(0, 50)) {
+              try {
+                const grades = await callMoodle("gradereport_user_get_grade_items", {
+                  courseid: String(courseId),
+                  userid: String(user.id),
+                });
+                const items = grades?.usergrades?.[0]?.gradeitems || [];
+                for (const item of items) {
+                  if (item.itemmodule === "customcert" || item.itemmodule === "certificate") {
+                    addCert(item.iteminstance, item.cmid || 0, stripHtml(item.itemname || "Certificado"), item.itemmodule);
                   }
-                } catch {
-                  // Use cmid as both id and cmid as fallback
-                  addCert(act.cmid, act.cmid, "Certificado", act.modname || "customcert");
+                }
+                if (certModules.length > 0) {
+                  console.log(`[certs] Per-user grade scan found certs with user ${user.id}`);
+                  break;
+                }
+              } catch {}
+            }
+            console.log(`[certs] After per-user grade scan: ${certModules.length} total certs`);
+          } catch (e: any) {
+            console.log("[certs] Per-user grade scan failed:", e?.message);
+          }
+        }
+
+        // Method 5: completion status - lists activity modules when permissions allow it
+        if (certModules.length === 0) {
+          try {
+            const enrolledUsers = await getEnrolledUsers();
+            const sampleUserId = enrolledUsers?.[0]?.id;
+            if (sampleUserId) {
+              const completion = await callMoodle("core_completion_get_activities_completion_status", {
+                courseid: String(courseId),
+                userid: String(sampleUserId),
+              });
+              for (const act of (completion?.statuses || [])) {
+                if (act.modname === "customcert" || act.modname === "certificate") {
+                  try {
+                    const modInfo = await callMoodle("core_course_get_course_module", {
+                      cmid: String(act.cmid),
+                    });
+                    const cm = modInfo?.cm;
+                    if (cm) {
+                      addCert(cm.instance, cm.id, cm.name || "Certificado", cm.modname || "customcert");
+                    }
+                  } catch {
+                    addCert(act.cmid, act.cmid, "Certificado", act.modname || "customcert");
+                  }
                 }
               }
+              console.log(`[certs] After completion scan: ${certModules.length} total certs`);
             }
-            console.log(`[certs] After completion scan: ${certModules.length} total certs`);
+          } catch (e: any) {
+            console.log("[certs] Completion status fallback failed:", e?.message);
           }
-        } catch (e: any) {
-          console.log("[certs] Completion status fallback failed:", e?.message);
         }
 
         console.log(`[certs] Total cert modules found: ${certModules.length}`);
