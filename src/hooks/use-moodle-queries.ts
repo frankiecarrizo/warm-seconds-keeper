@@ -32,7 +32,7 @@ function getMoodleConfig(): MoodleConfig | null {
 export function useGeneralBaseData(enabled: boolean) {
   const { disconnect } = useMoodleConnection();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["moodle", "general-base"],
     queryFn: async () => {
       const cfg = getMoodleConfig();
