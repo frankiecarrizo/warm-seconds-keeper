@@ -322,19 +322,19 @@ const GeneralPage = () => {
                     <Badge variant="outline" className="text-xs">{courses.length} cursos</Badge>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                    Actualizar
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} className="flex-1 sm:flex-none">
+                    <RefreshCw className={`h-4 w-4 sm:mr-2 ${loading ? "animate-spin" : ""}`} />
+                    <span className="hidden sm:inline">Actualizar</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => exportGeneralToCSV(exportData)} disabled={enrollmentLoading} title="Descargar CSV">
-                    <FileSpreadsheet className="h-4 w-4 mr-1" /> CSV
+                  <Button variant="outline" size="sm" onClick={() => exportGeneralToCSV(exportData)} disabled={enrollmentLoading} title="Descargar CSV" className="flex-1 sm:flex-none">
+                    <FileSpreadsheet className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">CSV</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => exportGeneralToPDF(exportData)} disabled={enrollmentLoading} title="Descargar PDF">
-                    <FileText className="h-4 w-4 mr-1" /> PDF
+                  <Button variant="outline" size="sm" onClick={() => exportGeneralToPDF(exportData)} disabled={enrollmentLoading} title="Descargar PDF" className="flex-1 sm:flex-none">
+                    <FileText className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">PDF</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleAIAnalysis} disabled={aiLoading || enrollmentLoading || !chartData} title="Analizar con IA">
-                    <Brain className={`h-4 w-4 mr-1 ${aiLoading ? "animate-pulse" : ""}`} /> IA
+                  <Button variant="outline" size="sm" onClick={handleAIAnalysis} disabled={aiLoading || enrollmentLoading || !chartData} title="Analizar con IA" className="flex-1 sm:flex-none">
+                    <Brain className={`h-4 w-4 sm:mr-1 ${aiLoading ? "animate-pulse" : ""}`} /> <span className="hidden sm:inline">IA</span>
                   </Button>
                 </div>
               </div>
