@@ -435,21 +435,21 @@ export default function CertificatesPage() {
 
   if (!isConnected) {
     return (
-      <div className="p-6 max-w-md mx-auto mt-20">
+      <div className="max-w-md mx-auto mt-10 sm:mt-20">
         <MoodleConnectForm onConnect={connect} isConnected={isConnected} onDisconnect={disconnect} configUrl={configUrl} />
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Certificados</h1>
-        <p className="text-muted-foreground text-sm">Busca y descarga certificados por usuario o curso.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Certificados</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm">Busca y descarga certificados por usuario o curso.</p>
       </div>
 
       <Tabs defaultValue="user" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-sm">
+        <TabsList className="grid w-full grid-cols-2 max-w-full sm:max-w-sm">
           <TabsTrigger value="user" className="gap-1.5">
             <User className="h-3.5 w-3.5" />
             Por usuario

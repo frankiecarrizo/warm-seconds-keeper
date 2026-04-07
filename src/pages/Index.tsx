@@ -84,8 +84,8 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="min-h-full">
+      <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
         {/* Export button */}
         {userData && (
           <div className="flex justify-end">
@@ -219,7 +219,7 @@ const Index = () => {
 
               {/* Quick stats */}
               {userData && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
                   <Card className="glass-card">
                     <CardContent className="p-4 text-center">
                       <p className="text-2xl font-bold text-foreground">{userData.totalCourses}</p>

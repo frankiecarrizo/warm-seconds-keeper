@@ -34,14 +34,14 @@ const CoursesPage = () => {
 
   if (!isConnected) {
     return (
-      <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="max-w-5xl mx-auto">
         <MoodleConnectForm onConnect={connect} isConnected={false} onDisconnect={disconnect} configUrl={configUrl} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto">
       {/* Error banner */}
       <AnimatePresence>
         {error && (
@@ -129,7 +129,7 @@ const CoursesPage = () => {
 
             {/* Quick stats */}
             {courseData && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
                 {/* Row 1 */}
                 <Card className="glass-card">
                   <CardContent className="p-4 text-center">

@@ -24,14 +24,16 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar isConnected={isConnected} configUrl={configUrl} onDisconnect={disconnect} />
-        <main className="flex-1 overflow-auto">
-          <div className="flex items-center gap-2 p-2 border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-30">
+        <main className="flex-1 overflow-auto min-w-0">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-30">
             <SidebarTrigger />
             <div className="ml-auto">
               <ThemeSwitcher />
             </div>
           </div>
-          {children}
+          <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
+            {children}
+          </div>
         </main>
       </div>
     </SidebarProvider>

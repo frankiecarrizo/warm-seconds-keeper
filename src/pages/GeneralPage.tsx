@@ -242,7 +242,7 @@ const GeneralPage = () => {
 
   if (!isConnected) {
     return (
-      <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="max-w-5xl mx-auto">
         <MoodleConnectForm onConnect={connect} isConnected={false} onDisconnect={disconnect} configUrl={configUrl} />
       </div>
     );
@@ -261,7 +261,7 @@ const GeneralPage = () => {
 
   if (!baseQuery.data) {
     return (
-      <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-8">
+      <div className="max-w-5xl mx-auto py-8">
         <Card className="glass-card border-destructive/30">
           <CardContent className="p-6">
             <div className="flex items-start gap-3">
@@ -293,8 +293,8 @@ const GeneralPage = () => {
   };
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="min-h-full">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
         {/* Error */}
         <AnimatePresence>
           {error && (
@@ -322,19 +322,19 @@ const GeneralPage = () => {
                     <Badge variant="outline" className="text-xs">{courses.length} cursos</Badge>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                    <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                    Actualizar
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} className="flex-1 sm:flex-none">
+                    <RefreshCw className={`h-4 w-4 sm:mr-2 ${loading ? "animate-spin" : ""}`} />
+                    <span className="hidden sm:inline">Actualizar</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => exportGeneralToCSV(exportData)} disabled={enrollmentLoading} title="Descargar CSV">
-                    <FileSpreadsheet className="h-4 w-4 mr-1" /> CSV
+                  <Button variant="outline" size="sm" onClick={() => exportGeneralToCSV(exportData)} disabled={enrollmentLoading} title="Descargar CSV" className="flex-1 sm:flex-none">
+                    <FileSpreadsheet className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">CSV</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => exportGeneralToPDF(exportData)} disabled={enrollmentLoading} title="Descargar PDF">
-                    <FileText className="h-4 w-4 mr-1" /> PDF
+                  <Button variant="outline" size="sm" onClick={() => exportGeneralToPDF(exportData)} disabled={enrollmentLoading} title="Descargar PDF" className="flex-1 sm:flex-none">
+                    <FileText className="h-4 w-4 sm:mr-1" /> <span className="hidden sm:inline">PDF</span>
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleAIAnalysis} disabled={aiLoading || enrollmentLoading || !chartData} title="Analizar con IA">
-                    <Brain className={`h-4 w-4 mr-1 ${aiLoading ? "animate-pulse" : ""}`} /> IA
+                  <Button variant="outline" size="sm" onClick={handleAIAnalysis} disabled={aiLoading || enrollmentLoading || !chartData} title="Analizar con IA" className="flex-1 sm:flex-none">
+                    <Brain className={`h-4 w-4 sm:mr-1 ${aiLoading ? "animate-pulse" : ""}`} /> <span className="hidden sm:inline">IA</span>
                   </Button>
                 </div>
               </div>
@@ -353,7 +353,7 @@ const GeneralPage = () => {
 
         {/* Stat cards - Row 1 */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
           <Card className="glass-card">
             <CardContent className="p-4 text-center">
               <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
@@ -395,7 +395,7 @@ const GeneralPage = () => {
 
         {/* Stat cards - Row 2 */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
           {enrollmentLoading ? (
             <>{[1,2,3,4,5].map(i => <StatSkeleton key={i} />)}</>
           ) : (
