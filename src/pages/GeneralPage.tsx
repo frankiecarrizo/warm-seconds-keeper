@@ -252,25 +252,15 @@ const GeneralPage = () => {
     "Preparando tu resumen completo… 🚀",
   ];
 
-  const StatSkeleton = ({ index = 0 }: { index?: number }) => {
+  const StatSkeletonInner = ({ index = 0 }: { index?: number }) => {
     const [msgIdx, setMsgIdx] = useState(index % LOADING_MESSAGES.length);
     
-    useMemo(() => {
-      const interval = setInterval(() => {
-        setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
-      }, 3000);
-      return () => clearInterval(interval);
-    }, []);
-
-    // Use useEffect instead for cleanup
-    const [, setCleanup] = useState<NodeJS.Timeout>();
-    useMemo(() => {
+    useState(() => {
       const id = setInterval(() => {
         setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
-      }, 3000 + index * 500);
-      setCleanup(id);
-      return id;
-    }, []);
+      }, 3000 + index * 400);
+      return () => clearInterval(id);
+    });
 
     return (
       <Card className="glass-card overflow-hidden">
