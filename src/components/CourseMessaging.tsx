@@ -179,8 +179,11 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
         // Bulk send with same text
         const finalText = message + signature;
         const { data, error } = await supabase.functions.invoke("moodle-proxy", {
-          body: { ...config, action: "send_message", params: { userIds: filteredUsers.map((u) => u.id), text: finalText } },
-          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: { action: "send_message", params: { userIds: filteredUsers.map((u) => u.id), text: finalText } },
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            "x-moodle-session": localStorage.getItem("moodle-session") || "",
+          },
         });
         if (error) throw new Error(error.message);
         if (data?.error) throw new Error(data.error);

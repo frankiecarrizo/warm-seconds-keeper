@@ -52,6 +52,7 @@ export function MoodleConnectionProvider({ children }: { children: React.ReactNo
   const disconnect = useCallback(() => {
     disconnectMoodle().finally(() => {
       localStorage.removeItem("moodle-url");
+      localStorage.removeItem("moodle-session");
       setConfigUrl("");
       setIsConnected(false);
       toast.info("Desconectado de Moodle");
