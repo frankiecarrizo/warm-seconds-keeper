@@ -13,8 +13,8 @@ function getCorsHeaders(req: Request) {
   return {
     "Access-Control-Allow-Origin": allowed ? origin : "",
     "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-    "Access-Control-Allow-Credentials": "true",
+      "authorization, x-client-info, apikey, content-type, x-moodle-session, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Credentials": "false",
   };
 }
 
@@ -86,7 +86,7 @@ serve(async (req) => {
     const body = await req.json();
     const { action, params } = body;
 
-    // ── Connect: encrypt and set cookie ──
+    // ── Connect: encrypt and return encrypted blob ──
     if (action === "connect") {
       const { moodleUrl, moodleToken } = body;
       if (!moodleUrl || !moodleToken) {
@@ -96,39 +96,26 @@ serve(async (req) => {
         );
       }
       const encrypted = await encryptConfig({ moodleUrl, moodleToken });
-      const maxAge = 60 * 60 * 24 * 7; // 7 days
       return new Response(
-        JSON.stringify({ success: true }),
+        JSON.stringify({ success: true, session: encrypted }),
         {
           status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "Set-Cookie": buildSetCookie(encodeURIComponent(encrypted), maxAge),
-          },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
     }
 
-    // ── Disconnect: clear cookie ──
+    // ── Disconnect: no-op on server side ──
     if (action === "disconnect") {
       return new Response(
         JSON.stringify({ success: true }),
-        {
-          status: 200,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-            "Set-Cookie": buildSetCookie("", 0),
-          },
-        }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // ── For all other actions, read credentials from cookie ──
-    const cookies = parseCookies(req.headers.get("cookie"));
-    const sessionCookie = cookies[COOKIE_NAME];
-    if (!sessionCookie) {
+    // ── For all other actions, read credentials from x-moodle-session header ──
+    const sessionBlob = req.headers.get("x-moodle-session");
+    if (!sessionBlob) {
       return new Response(
         JSON.stringify({ error: "SESSION_EXPIRED: No hay sesión activa. Reconectá." }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -138,7 +125,7 @@ serve(async (req) => {
     let moodleUrl: string;
     let moodleToken: string;
     try {
-      const config = await decryptConfig(decodeURIComponent(sessionCookie));
+      const config = await decryptConfig(sessionBlob);
       moodleUrl = config.moodleUrl;
       moodleToken = config.moodleToken;
     } catch {
