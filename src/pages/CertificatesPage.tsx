@@ -86,7 +86,6 @@ async function downloadAllAsZip(certs: CertificateDisplay[], zipName: string, se
   let errors = 0;
 
   for (const cert of certs) {
-    const result = await downloadSingleCert(config, cert);
     const result = await downloadSingleCert(cert);
     if (result) {
       zip.file(result.filename, result.data);
@@ -129,11 +128,9 @@ function CertsByUser() {
 
   const handleSearch = async () => {
     if (!search.trim()) return;
-    const cfg = getConfig();
-    if (!cfg) return;
     setSearching(true);
     try {
-      const res = await searchUsers(cfg, search);
+      const res = await searchUsers(search);
       setUsers(res);
     } catch (e: any) {
       toast.error(e.message);
@@ -146,11 +143,9 @@ function CertsByUser() {
     setSelectedUser(user);
     setUsers([]);
     setCerts([]);
-    const cfg = getConfig();
-    if (!cfg) return;
     setLoadingCerts(true);
     try {
-      const data = await getUserFullData(cfg, user.id);
+      const data = await getUserFullData(user.id);
       const allCerts: CertificateDisplay[] = (data.courses || []).flatMap((c: any) =>
         (c.certificates || []).map((cert: any) => ({
           ...cert,
@@ -167,10 +162,8 @@ function CertsByUser() {
   };
 
   const handleDownloadOne = async (cert: CertificateDisplay) => {
-    const cfg = getConfig();
-    if (!cfg) return;
     setDownloadingId(cert.id);
-    const result = await downloadSingleCert(cfg, cert);
+    const result = await downloadSingleCert(cert);
     if (result) {
       const blob = new Blob([result.data.buffer as ArrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
@@ -186,10 +179,9 @@ function CertsByUser() {
   };
 
   const handleDownloadAll = async () => {
-    const cfg = getConfig();
-    if (!cfg || certs.length === 0) return;
+    if (certs.length === 0) return;
     setZipProgress(0);
-    await downloadAllAsZip(cfg, certs, selectedUser?.fullname || "usuario", setZipProgress);
+    await downloadAllAsZip(certs, selectedUser?.fullname || "usuario", setZipProgress);
     setZipProgress(null);
   };
 
@@ -286,11 +278,9 @@ function CertsByCourse() {
 
   const handleSearch = async () => {
     if (!search.trim()) return;
-    const cfg = getConfig();
-    if (!cfg) return;
     setSearching(true);
     try {
-      const res = await searchCourses(cfg, search);
+      const res = await searchCourses(search);
       setCourses(res.filter((c: any) => c.id !== 1));
     } catch (e: any) {
       toast.error(e.message);
@@ -303,11 +293,9 @@ function CertsByCourse() {
     setSelectedCourse(course);
     setCourses([]);
     setCerts([]);
-    const cfg = getConfig();
-    if (!cfg) return;
     setLoadingCerts(true);
     try {
-      const data = await callProxy(cfg, "get_course_certificates", { courseId: course.id });
+      const data = await callProxy("get_course_certificates", { courseId: course.id });
       setCerts((data || []).map((c: any) => ({ ...c, courseName: course.fullname })));
     } catch (e: any) {
       toast.error(e.message);
@@ -317,10 +305,8 @@ function CertsByCourse() {
   };
 
   const handleDownloadOne = async (cert: CertificateDisplay) => {
-    const cfg = getConfig();
-    if (!cfg) return;
     setDownloadingId(cert.id * 1000 + (cert.userId || 0));
-    const result = await downloadSingleCert(cfg, cert);
+    const result = await downloadSingleCert(cert);
     if (result) {
       const blob = new Blob([result.data.buffer as ArrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
@@ -336,10 +322,9 @@ function CertsByCourse() {
   };
 
   const handleDownloadAll = async () => {
-    const cfg = getConfig();
-    if (!cfg || certs.length === 0) return;
+    if (certs.length === 0) return;
     setZipProgress(0);
-    await downloadAllAsZip(cfg, certs, selectedCourse?.fullname || "curso", setZipProgress);
+    await downloadAllAsZip(certs, selectedCourse?.fullname || "curso", setZipProgress);
     setZipProgress(null);
   };
 
