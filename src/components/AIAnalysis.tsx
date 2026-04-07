@@ -253,7 +253,10 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <Card className="glass-card overflow-hidden">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-info/5 py-3 px-4">
+        <CardHeader
+          className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-info/5 py-3 px-4 cursor-pointer select-none"
+          onClick={() => setCollapsed(c => !c)}
+        >
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-primary/10">
@@ -262,7 +265,8 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
               Análisis con IA
               {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             </CardTitle>
-            {sections.length > 4 && (
+            <div className="flex items-center gap-2">
+            {!collapsed && sections.length > 4 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
                   {currentSlide + 1} / {totalPages}
