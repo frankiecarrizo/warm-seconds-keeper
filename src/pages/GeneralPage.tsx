@@ -252,15 +252,15 @@ const GeneralPage = () => {
     "Preparando tu resumen completo… 🚀",
   ];
 
-  const StatSkeletonInner = ({ index = 0 }: { index?: number }) => {
+  const StatSkeleton = ({ index = 0 }: { index?: number }) => {
     const [msgIdx, setMsgIdx] = useState(index % LOADING_MESSAGES.length);
     
-    useState(() => {
+    useEffect(() => {
       const id = setInterval(() => {
         setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
       }, 3000 + index * 400);
       return () => clearInterval(id);
-    });
+    }, [index]);
 
     return (
       <Card className="glass-card overflow-hidden">
