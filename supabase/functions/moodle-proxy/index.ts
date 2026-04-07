@@ -879,6 +879,150 @@ serve(async (req) => {
       }
 
 
+      // ── Activity completion report (student x activity matrix) ──
+      case "get_activity_completion_report": {
+        const courseId = params?.courseId;
+        if (!courseId) throw { message: "Missing courseId", status: 400 };
+
+        // Get enrolled students
+        const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
+          courseid: String(courseId),
+        });
+        const students = (enrolled || []).filter((u: any) => {
+          const roles = (u.roles || []).map((r: any) => r.shortname);
+          return !roles.includes("editingteacher") && !roles.includes("teacher") && !roles.includes("manager");
+        });
+
+        // Get activities list from first student (or course contents)
+        let activities: { cmid: number; name: string; modname: string }[] = [];
+        const contents = await callMoodle("core_course_get_contents", {
+          courseid: String(courseId),
+        }).catch(() => []);
+        for (const section of contents) {
+          for (const mod of section.modules || []) {
+            if (mod.completion && mod.completion > 0) {
+              activities.push({ cmid: mod.id, name: mod.name, modname: mod.modname });
+            }
+          }
+        }
+
+        // Get completion status for each student in batches
+        const rows: any[] = [];
+        const batchSize = 10;
+        for (let i = 0; i < students.length; i += batchSize) {
+          const batch = students.slice(i, i + batchSize);
+          const results = await Promise.all(
+            batch.map(async (s: any) => {
+              try {
+                const actResult = await callMoodle("core_completion_get_activities_completion_status", {
+                  courseid: String(courseId),
+                  userid: String(s.id),
+                });
+                const statuses = actResult.statuses || [];
+                const statusMap: Record<number, number> = {};
+                for (const st of statuses) {
+                  statusMap[st.cmid] = st.state; // 0=incomplete, 1=complete, 2=complete-pass, 3=complete-fail
+                }
+                return {
+                  id: s.id,
+                  fullname: s.fullname,
+                  email: s.email || "",
+                  completions: statusMap,
+                };
+              } catch {
+                return {
+                  id: s.id,
+                  fullname: s.fullname,
+                  email: s.email || "",
+                  completions: {},
+                };
+              }
+            })
+          );
+          rows.push(...results);
+        }
+
+        result = { activities, students: rows };
+        break;
+      }
+
+      // ── Grader report (student x grade item matrix) ────────────
+      case "get_grader_report": {
+        const courseId = params?.courseId;
+        if (!courseId) throw { message: "Missing courseId", status: 400 };
+
+        // Get enrolled students
+        const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
+          courseid: String(courseId),
+        });
+        const students = (enrolled || []).filter((u: any) => {
+          const roles = (u.roles || []).map((r: any) => r.shortname);
+          return !roles.includes("editingteacher") && !roles.includes("teacher") && !roles.includes("manager");
+        });
+
+        // Get grade items structure from first student
+        let gradeItemHeaders: { id: number; itemname: string; grademax: number }[] = [];
+
+        // Get grades for each student in batches
+        const rows: any[] = [];
+        const batchSize = 10;
+        for (let i = 0; i < students.length; i += batchSize) {
+          const batch = students.slice(i, i + batchSize);
+          const results = await Promise.all(
+            batch.map(async (s: any) => {
+              try {
+                const g = await callMoodle("gradereport_user_get_grade_items", {
+                  courseid: String(courseId),
+                  userid: String(s.id),
+                });
+                const items = g.usergrades?.[0]?.gradeitems || [];
+                // Capture headers from first successful response
+                if (gradeItemHeaders.length === 0 && items.length > 0) {
+                  gradeItemHeaders = items
+                    .filter((it: any) => it.itemtype !== "course")
+                    .map((it: any) => ({
+                      id: it.id,
+                      itemname: it.itemname || it.itemtype,
+                      grademax: it.grademax || 0,
+                    }));
+                }
+                const grades: Record<number, { grade: number | null; grademax: number }> = {};
+                for (const it of items) {
+                  if (it.itemtype === "course") continue;
+                  grades[it.id] = {
+                    grade: it.graderaw ?? null,
+                    grademax: it.grademax || 0,
+                  };
+                }
+                // Course total
+                const courseItem = items.find((it: any) => it.itemtype === "course");
+                return {
+                  id: s.id,
+                  fullname: s.fullname,
+                  email: s.email || "",
+                  grades,
+                  courseTotal: courseItem?.graderaw ?? null,
+                  courseTotalMax: courseItem?.grademax ?? 0,
+                };
+              } catch {
+                return {
+                  id: s.id,
+                  fullname: s.fullname,
+                  email: s.email || "",
+                  grades: {},
+                  courseTotal: null,
+                  courseTotalMax: 0,
+                };
+              }
+            })
+          );
+          rows.push(...results);
+        }
+
+        result = { gradeItems: gradeItemHeaders, students: rows };
+        break;
+      }
+
       // ── Get all issued certificates for a course ──────────────
       case "get_course_certificates": {
         const courseId = params?.courseId;
