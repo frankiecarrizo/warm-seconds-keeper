@@ -1,8 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { GripVertical, LogIn } from "lucide-react";
-
-const COLORS = ["hsl(172, 66%, 50%)", "hsl(172, 55%, 55%)", "hsl(172, 45%, 60%)", "hsl(172, 35%, 65%)", "hsl(172, 25%, 70%)"];
 
 interface Props {
   data: { name: string; ingresos: number }[];
@@ -10,6 +7,7 @@ interface Props {
 
 export function TopAccessWidget({ data }: Props) {
   if (data.length === 0) return null;
+  const max = Math.max(...data.map(d => d.ingresos));
 
   return (
     <Card className="glass-card h-full">
@@ -20,23 +18,28 @@ export function TopAccessWidget({ data }: Props) {
           Top 5 — Mayor Ingreso
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0 pb-4">
-        <div className="h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 15, bottom: 0, left: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--foreground))" }} />
-              <YAxis type="category" dataKey="name" width={220} tick={{ fontSize: 9, fill: "hsl(var(--foreground))" }} />
-              <Tooltip
-                contentStyle={{ fontSize: 12, backgroundColor: "hsl(var(--muted))", color: "hsl(var(--foreground))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
-                formatter={(value: number) => [`${value} estudiantes`, "Ingresaron"]}
+      <CardContent className="pt-0 pb-4 space-y-2.5">
+        {data.map((item, i) => (
+          <div key={i} className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-foreground truncate flex-1" title={item.name}>
+                {item.name.length > 45 ? item.name.slice(0, 45) + "…" : item.name}
+              </span>
+              <span className="text-xs font-semibold text-primary tabular-nums shrink-0">
+                {item.ingresos}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${(item.ingresos / max) * 100}%`,
+                  backgroundColor: `hsl(172, ${66 - i * 8}%, ${50 + i * 4}%)`,
+                }}
               />
-              <Bar dataKey="ingresos" radius={[0, 4, 4, 0]}>
-                {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+            </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
