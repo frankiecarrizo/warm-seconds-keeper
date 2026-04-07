@@ -897,6 +897,7 @@ serve(async (req) => {
             }
           }
         }
+        console.log("certModules found:", JSON.stringify(certModules));
 
         const allCerts: any[] = [];
         for (const cert of certModules) {
@@ -905,6 +906,7 @@ serve(async (req) => {
               const issued = await callMoodle("mod_customcert_get_issued_certificates", {
                 certificateid: String(cert.id),
               });
+              console.log(`issued for cert ${cert.id}:`, JSON.stringify(issued));
               for (const issue of (issued.issues || [])) {
                 let downloadUrl = "";
                 if (issue.fileurl) {
