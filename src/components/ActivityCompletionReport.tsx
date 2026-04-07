@@ -65,6 +65,18 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
     return <Square className="h-4 w-4 text-muted-foreground/25" />;
   };
 
+  const sortedStudents = useMemo(() => {
+    if (!data) return [];
+    return [...data.students].sort((a, b) => {
+      const count = (s: typeof a) =>
+        data.activities.reduce((sum, act) => {
+          const st = s.completions[act.cmid];
+          return sum + (st === 1 || st === 2 ? 1 : 0);
+        }, 0);
+      return count(a) - count(b);
+    });
+  }, [data]);
+
   if (!data && !loading) {
     return (
       <Card className="glass-card">
@@ -93,15 +105,6 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
   }
 
   if (!data) return null;
-
-  const sortedStudents = useMemo(() => [...data.students].sort((a, b) => {
-    const count = (s: typeof a) =>
-      data.activities.reduce((sum, act) => {
-        const st = s.completions[act.cmid];
-        return sum + (st === 1 || st === 2 ? 1 : 0);
-      }, 0);
-    return count(a) - count(b);
-  }), [data]);
 
   const PAGE_SIZE = 50;
   const totalPages = Math.ceil(sortedStudents.length / PAGE_SIZE);
