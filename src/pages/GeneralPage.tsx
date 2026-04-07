@@ -1,4 +1,4 @@
-import { useMemo, useState, lazy, Suspense, useCallback } from "react";
+import { useMemo, useState, useEffect, lazy, Suspense, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet, Brain } from "lucide-react";
 import { exportGeneralToCSV, exportGeneralToPDF } from "@/lib/export-utils";
