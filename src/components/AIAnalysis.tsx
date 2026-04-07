@@ -276,7 +276,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => emblaApi?.scrollPrev()}
+                  onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
                   disabled={!canScrollPrev}
                 >
                   <ChevronLeft className="h-4 w-4" />
