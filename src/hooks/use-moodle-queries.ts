@@ -15,7 +15,7 @@ import {
 import { cacheSiteInfo } from "@/lib/export-utils";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export interface LoginLogEntry {
   timecreated: number;
@@ -32,7 +32,7 @@ function getMoodleConfig(): MoodleConfig | null {
 export function useGeneralBaseData(enabled: boolean) {
   const { disconnect } = useMoodleConnection();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ["moodle", "general-base"],
     queryFn: async () => {
       const cfg = getMoodleConfig();
@@ -82,10 +82,25 @@ export function useGeneralBaseData(enabled: boolean) {
     enabled,
     staleTime: Infinity,
     gcTime: 1000 * 60 * 30,
-    retry: 1,
+    retry: (failureCount, error) => {
+      if (error?.message?.startsWith("TOKEN_INVALID")) return false;
+      return failureCount < 1;
+    },
     throwOnError: false,
+    meta: { disconnect },
   });
+
+  // Auto-disconnect on token errors
+  useEffect(() => {
+    if (query.error?.message?.startsWith("TOKEN_INVALID")) {
+      toast.error("El token de Moodle es inválido o expiró. Por favor, reconectá.");
+      disconnect();
+    }
+  }, [query.error, disconnect]);
+
+  return query;
 }
+
 
 // ─── Enrollment summaries (batched, with progress) ───
 export function useEnrollmentData(courseIds: number[], enabled: boolean) {
