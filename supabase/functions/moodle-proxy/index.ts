@@ -532,17 +532,25 @@ serve(async (req) => {
           // Smart completion: official criteria or activity-based fallback
           const completionResult = await getCompletionForUser(course.id, userId);
 
-          // Get quiz attempts and certificates from course contents
+          // Get quiz attempts and certificates from course contents, with Moodle 4.0 fallbacks
           const contents = await callMoodle("core_course_get_contents", {
             courseid: String(course.id),
           }).catch(() => []);
 
           const quizzes: any[] = [];
           const certificates: any[] = [];
+          const seenQuizIds = new Set<number>();
+
+          const pushQuiz = (quiz: { id: number; name: string }) => {
+            if (!quiz?.id || seenQuizIds.has(quiz.id)) return;
+            seenQuizIds.add(quiz.id);
+            quizzes.push(quiz);
+          };
+
           for (const section of contents) {
             for (const mod of section.modules || []) {
               if (mod.modname === "quiz") {
-                quizzes.push({ id: mod.instance, name: mod.name });
+                pushQuiz({ id: Number(mod.instance), name: mod.name || `Cuestionario ${mod.instance}` });
               }
               if (mod.modname === "customcert" || mod.modname === "certificate") {
                 certificates.push({
@@ -554,6 +562,33 @@ serve(async (req) => {
                   courseName: course.fullname,
                 });
               }
+            }
+          }
+
+          if (quizzes.length === 0) {
+            try {
+              const quizResponse = await callMoodle("mod_quiz_get_quizzes_by_courses", {
+                "courseids[0]": String(course.id),
+              });
+              const fallbackQuizzes = quizResponse?.quizzes || quizResponse || [];
+              for (const quiz of fallbackQuizzes) {
+                pushQuiz({
+                  id: Number(quiz.id),
+                  name: quiz.name || `Cuestionario ${quiz.id}`,
+                });
+              }
+            } catch {}
+          }
+
+          if (quizzes.length === 0 && Array.isArray(grades)) {
+            for (const item of grades) {
+              const isQuiz = item.itemmodule === "quiz" || (item.itemtype === "mod" && item.itemmodule === "quiz");
+              const quizId = Number(item.iteminstance || 0);
+              if (!isQuiz || !quizId) continue;
+              pushQuiz({
+                id: quizId,
+                name: stripHtml(item.itemname || `Cuestionario ${quizId}`),
+              });
             }
           }
 
@@ -570,7 +605,13 @@ serve(async (req) => {
                 quizId: quiz.id,
                 attempts: att.attempts || [],
               });
-            } catch {}
+            } catch {
+              quizAttempts.push({
+                quizName: quiz.name,
+                quizId: quiz.id,
+                attempts: [],
+              });
+            }
           }
 
           // Check issued certificates for customcert
