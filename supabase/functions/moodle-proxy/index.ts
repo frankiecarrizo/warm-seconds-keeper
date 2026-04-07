@@ -928,7 +928,9 @@ serve(async (req) => {
                   userId: issue.userid,
                 });
               }
-            } catch {}
+            } catch (e: any) {
+              console.log(`Error fetching issued certs for ${cert.id}:`, e?.message || JSON.stringify(e));
+            }
           }
         }
 
