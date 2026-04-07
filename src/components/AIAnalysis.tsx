@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BookOpen, GraduationCap, AlertTriangle, TrendingUp, Lightbulb, Target, Users, Clock, BarChart3, Shield, Award, Brain, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, BookOpen, GraduationCap, AlertTriangle, TrendingUp, Lightbulb, Target, Users, Clock, BarChart3, Shield, Award, Brain, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, PieChart, Pie, Tooltip } from "recharts";
@@ -186,6 +186,7 @@ function FullSectionCard({ section }: { section: ParsedSection }) {
 }
 
 export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: false, slidesToScroll: 1 });
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
@@ -253,7 +254,10 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <Card className="glass-card overflow-hidden">
-        <CardHeader className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-info/5 py-3 px-4">
+        <CardHeader
+          className="border-b border-border/50 bg-gradient-to-r from-primary/5 to-info/5 py-3 px-4 cursor-pointer select-none"
+          onClick={() => setCollapsed(c => !c)}
+        >
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <span className="inline-flex items-center justify-center h-7 w-7 rounded-lg bg-primary/10">
@@ -262,7 +266,8 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
               Análisis con IA
               {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             </CardTitle>
-            {sections.length > 4 && (
+            <div className="flex items-center gap-2">
+            {!collapsed && sections.length > 4 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
                   {currentSlide + 1} / {totalPages}
@@ -271,7 +276,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => emblaApi?.scrollPrev()}
+                  onClick={(e) => { e.stopPropagation(); emblaApi?.scrollPrev(); }}
                   disabled={!canScrollPrev}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -280,15 +285,25 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => emblaApi?.scrollNext()}
+                  onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
                   disabled={!canScrollNext}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => { e.stopPropagation(); setCollapsed(c => !c); }}
+              >
+                {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </CardHeader>
+        {!collapsed && (
         <CardContent className="p-3">
           {!analysis && loading ? (
             <div className="flex items-center gap-3 text-muted-foreground py-10 justify-center">
@@ -343,6 +358,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
             </>
           )}
         </CardContent>
+        )}
       </Card>
     </motion.div>
   );
