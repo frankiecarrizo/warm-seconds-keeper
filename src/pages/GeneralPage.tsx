@@ -13,6 +13,7 @@ import { useGeneralBaseData, useEnrollmentData, useLoginLogs, useInvalidateGener
 import { motion, AnimatePresence } from "framer-motion";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { toast } from "sonner";
+import { MobileCardSlider } from "@/components/MobileCardSlider";
 
 const GeneralCharts = lazy(() => import("@/components/GeneralCharts").then(m => ({ default: m.GeneralCharts })));
 
