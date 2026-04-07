@@ -246,7 +246,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
     return result;
   }, [analysis]);
 
-  const totalPages = Math.ceil(sections.length / 2);
+  const totalPages = Math.ceil(sections.length / 4);
 
   if (!analysis && !loading) return null;
 
