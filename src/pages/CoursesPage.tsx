@@ -34,7 +34,7 @@ const CoursesPage = () => {
 
   if (!isConnected) {
     return (
-      <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="max-w-5xl mx-auto">
         <MoodleConnectForm onConnect={connect} isConnected={false} onDisconnect={disconnect} configUrl={configUrl} />
       </div>
     );

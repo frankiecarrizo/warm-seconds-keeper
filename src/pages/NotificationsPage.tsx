@@ -40,14 +40,14 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Notificaciones</h1>
-        <p className="text-muted-foreground text-sm">Envía mensajes vía Moodle a usuarios, cursos o todos.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground">Notificaciones</h1>
+        <p className="text-muted-foreground text-xs sm:text-sm">Envía mensajes vía Moodle a usuarios, cursos o todos.</p>
       </div>
 
       <Tabs defaultValue="course" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+        <TabsList className="grid w-full grid-cols-3 max-w-full sm:max-w-lg">
           <TabsTrigger value="course" className="gap-1.5">
             <BookOpen className="h-3.5 w-3.5" />
             Por curso
