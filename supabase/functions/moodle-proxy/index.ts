@@ -483,7 +483,10 @@ serve(async (req) => {
           });
         } catch (e: any) {
           // Access exceptions are common when the token lacks mod/quiz:viewreports
-          result = { error: e.message || "No se pudo obtener la revisión del intento", accessDenied: true };
+          result = {
+            accessDenied: true,
+            message: e.message || "No se pudo obtener la revisión del intento",
+          };
         }
         break;
       }
