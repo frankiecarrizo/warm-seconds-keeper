@@ -450,7 +450,7 @@ const GeneralPage = () => {
           ];
 
           const row2Cards = enrollmentLoading
-            ? [1,2,3,4,5].map(i => <StatSkeleton key={`skel-${i}`} />)
+            ? [1,2,3,4,5].map(i => <StatSkeleton key={`skel-${i}`} index={i + 4} />)
             : [
               <Card key="enrollments" className="glass-card">
                 <CardContent className="p-4 text-center">
