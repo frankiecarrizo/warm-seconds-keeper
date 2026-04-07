@@ -31,7 +31,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 ];
 
 export function CourseCharts({ data }: CourseChartsProps) {
-  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout } = useSwapy({
+  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
     storageKey: "course-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
   });
