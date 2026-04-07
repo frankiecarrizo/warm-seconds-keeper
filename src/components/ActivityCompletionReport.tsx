@@ -17,6 +17,7 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
   const [data, setData] = useState<ACReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);

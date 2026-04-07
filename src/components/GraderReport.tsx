@@ -18,6 +18,7 @@ export function GraderReport({ courseId, courseName }: Props) {
   const [data, setData] = useState<GRReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
