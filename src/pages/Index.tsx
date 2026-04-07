@@ -49,7 +49,7 @@ const Index = () => {
   };
 
   const handleCertificateDownload = async (cert: MoodleCertificate) => {
-    if (!userData || !config.moodleUrl || !config.moodleToken) return;
+    if (!userData) return;
 
     toast.info("Descargando certificado...");
 
@@ -132,7 +132,7 @@ const Index = () => {
             onConnect={connect}
             isConnected={false}
             onDisconnect={disconnect}
-            configUrl={config.moodleUrl}
+            configUrl={configUrl}
           />
         )}
 
