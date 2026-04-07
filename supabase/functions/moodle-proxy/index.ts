@@ -1456,11 +1456,57 @@ case "get_activity_completion_report": {
         }).catch(() => []);
 
         const certModules: any[] = [];
+        const seenCertIds = new Set<string>();
         for (const section of contents) {
           for (const mod of (section.modules || [])) {
             if (mod.modname === "customcert" || mod.modname === "certificate") {
-              certModules.push({ id: mod.instance, cmid: mod.id, name: mod.name, type: mod.modname });
+              const key = `${mod.modname}-${mod.instance}`;
+              if (!seenCertIds.has(key)) {
+                seenCertIds.add(key);
+                certModules.push({ id: mod.instance, cmid: mod.id, name: mod.name, type: mod.modname });
+              }
             }
+          }
+        }
+
+        // Fallback 1: try mod_customcert_get_certificates_by_courses
+        if (certModules.length === 0) {
+          try {
+            const customcerts = await callMoodle("mod_customcert_get_certificates_by_courses", {
+              "courseids[0]": String(courseId),
+            });
+            for (const cert of (customcerts?.customcerts || [])) {
+              const key = `customcert-${cert.id}`;
+              if (!seenCertIds.has(key)) {
+                seenCertIds.add(key);
+                certModules.push({ id: cert.id, cmid: cert.coursemodule || cert.cmid || 0, name: cert.name, type: "customcert" });
+              }
+            }
+          } catch (e: any) {
+            console.log("mod_customcert_get_certificates_by_courses not available:", e?.message);
+          }
+        }
+
+        // Fallback 2: try core_course_get_course_module_by_instance with known modnames
+        if (certModules.length === 0) {
+          try {
+            // Try to get activities via gradebook - certificates often appear there
+            const grades = await callMoodle("gradereport_user_get_grade_items", {
+              courseid: String(courseId),
+            }).catch(() => null);
+            if (grades?.usergrades?.[0]?.gradeitems) {
+              for (const item of grades.usergrades[0].gradeitems) {
+                if (item.itemmodule === "customcert" || item.itemmodule === "certificate") {
+                  const key = `${item.itemmodule}-${item.iteminstance}`;
+                  if (!seenCertIds.has(key)) {
+                    seenCertIds.add(key);
+                    certModules.push({ id: item.iteminstance, cmid: item.cmid || 0, name: item.itemname || "Certificado", type: item.itemmodule });
+                  }
+                }
+              }
+            }
+          } catch (e: any) {
+            console.log("Gradebook fallback for certs failed:", e?.message);
           }
         }
 
