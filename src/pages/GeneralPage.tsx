@@ -293,8 +293,8 @@ const GeneralPage = () => {
   };
 
   return (
-    <div className="min-h-full bg-background">
-      <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
+    <div className="min-h-full">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
         {/* Error */}
         <AnimatePresence>
           {error && (
