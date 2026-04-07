@@ -20,6 +20,19 @@ const queryClient = new QueryClient();
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const { isConnected, configUrl, disconnect } = useMoodleConnection();
 
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <div className="flex items-center justify-end px-4 py-2">
+          <ThemeSwitcher />
+        </div>
+        <div className="flex-1 flex items-center justify-center px-4">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">

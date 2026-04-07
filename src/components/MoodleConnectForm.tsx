@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Globe, Key, Plug, Loader2, LogOut, GraduationCap } from "lucide-react";
+import { Globe, Key, Plug, Loader2, LogOut, GraduationCap, BarChart3, Users, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 
 interface MoodleConnectFormProps {
@@ -12,6 +12,13 @@ interface MoodleConnectFormProps {
   onDisconnect: () => void;
   configUrl?: string;
 }
+
+const floatingIcons = [
+  { Icon: BarChart3, x: "10%", y: "20%", delay: 0, size: 20 },
+  { Icon: Users, x: "85%", y: "15%", delay: 0.5, size: 18 },
+  { Icon: BookOpen, x: "75%", y: "75%", delay: 1, size: 22 },
+  { Icon: GraduationCap, x: "15%", y: "80%", delay: 1.5, size: 16 },
+];
 
 export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, configUrl }: MoodleConnectFormProps) {
   const [url, setUrl] = useState("");
@@ -22,7 +29,6 @@ export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, config
     e.preventDefault();
     if (!url || !token) return;
     setTesting(true);
-    // Small delay for UX
     await new Promise((r) => setTimeout(r, 500));
     onConnect(url, token);
     setTesting(false);
@@ -53,114 +59,140 @@ export function MoodleConnectForm({ onConnect, isConnected, onDisconnect, config
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <Card className="glass-card max-w-lg mx-auto">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 glow-primary">
-            <GraduationCap className="h-8 w-8 text-primary" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Conectar a Moodle</CardTitle>
-          <CardDescription>
-            Ingresá la URL y token de tu campus para comenzar el análisis
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="moodle-url">URL del Campus</Label>
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="moodle-url"
-                  type="url"
-                  placeholder="https://tucampus.edu/moodle"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="moodle-token">Token de Web Service</Label>
-              <div className="relative">
-                <Key className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="moodle-token"
-                  type="password"
-                  placeholder="Tu token de API"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Administración del sitio → Plugins → Web services → Administrar tokens
-              </p>
-            </div>
-            <Button type="submit" variant="gradient" className="w-full" disabled={testing || !url || !token}>
-              {testing ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Conectando...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <Plug className="h-4 w-4" />
-                  Conectar
-                </span>
-              )}
-            </Button>
-          </form>
+    <div className="relative w-full max-w-md mx-auto">
+      {/* Floating animated icons */}
+      {floatingIcons.map(({ Icon, x, y, delay, size }, i) => (
+        <motion.div
+          key={i}
+          className="absolute text-primary/15 pointer-events-none"
+          style={{ left: x, top: y }}
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{
+            opacity: [0, 0.4, 0.2, 0.4],
+            scale: [0.5, 1, 0.9, 1],
+            y: [0, -10, 5, -10],
+          }}
+          transition={{
+            duration: 4,
+            delay,
+            repeat: Infinity,
+            repeatType: "reverse",
+            ease: "easeInOut",
+          }}
+        >
+          <Icon size={size} />
+        </motion.div>
+      ))}
 
-          <div className="mt-6 pt-4 border-t border-border/50">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Funciones de Web Service requeridas:</p>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-medium text-foreground/80 mb-1">📋 General y Sitio</p>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-3">
-                  <li><span className="font-mono text-foreground/70">core_webservice_get_site_info</span> — Información del sitio</li>
-                  <li><span className="font-mono text-foreground/70">core_course_get_courses</span> — Listar todos los cursos</li>
-                  <li><span className="font-mono text-foreground/70">core_course_get_categories</span> — Categorías de cursos</li>
-                  <li><span className="font-mono text-foreground/70">core_course_search_courses</span> — Buscar cursos</li>
-                </ul>
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <Card className="relative overflow-hidden border-border/50 shadow-2xl shadow-primary/5 bg-card/80 backdrop-blur-xl">
+          {/* Gradient accent line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
+
+          <CardContent className="p-6 sm:p-8 pt-8 sm:pt-10">
+            {/* Logo */}
+            <motion.div
+              className="flex justify-center mb-6"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            >
+              <div className="relative">
+                <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl scale-150" />
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+                  <GraduationCap className="h-8 w-8 text-primary" />
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-foreground/80 mb-1">👤 Usuarios</p>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-3">
-                  <li><span className="font-mono text-foreground/70">core_user_get_users</span> — Buscar usuarios</li>
-                  <li><span className="font-mono text-foreground/70">core_user_get_users_by_field</span> — Obtener info del usuario</li>
-                  <li><span className="font-mono text-foreground/70">core_enrol_get_users_courses</span> — Cursos del usuario</li>
-                  <li><span className="font-mono text-foreground/70">core_enrol_get_enrolled_users</span> — Usuarios inscriptos y roles</li>
-                </ul>
+            </motion.div>
+
+            {/* Title */}
+            <motion.div
+              className="text-center mb-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <h1 className="text-2xl font-bold text-foreground mb-1">Moodle AI Analytics</h1>
+              <p className="text-sm text-muted-foreground">
+                Conectá tu campus para comenzar
+              </p>
+            </motion.div>
+
+            {/* Form */}
+            <motion.form
+              onSubmit={handleSubmit}
+              className="space-y-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="moodle-url" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  URL del Campus
+                </Label>
+                <div className="relative">
+                  <Globe className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+                  <Input
+                    id="moodle-url"
+                    type="url"
+                    placeholder="https://tucampus.edu/moodle"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
+                    required
+                  />
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-foreground/80 mb-1">📊 Calificaciones y Progreso</p>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-3">
-                  <li><span className="font-mono text-foreground/70">gradereport_user_get_grade_items</span> — Calificaciones por curso</li>
-                  <li><span className="font-mono text-foreground/70">core_completion_get_course_completion_status</span> — Estado de completitud</li>
-                  <li><span className="font-mono text-foreground/70">core_course_get_contents</span> — Contenidos y actividades</li>
-                </ul>
+              <div className="space-y-1.5">
+                <Label htmlFor="moodle-token" className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Token de Web Service
+                </Label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+                  <Input
+                    id="moodle-token"
+                    type="password"
+                    placeholder="Tu token de API"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    className="pl-10 h-11 bg-background/50 border-border/50 focus:border-primary/50 transition-colors"
+                    required
+                  />
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-foreground/80 mb-1">📝 Quizzes</p>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-3">
-                  <li><span className="font-mono text-foreground/70">mod_quiz_get_user_attempts</span> — Intentos de quizzes <span className="text-primary/70">(Moodle 4.x)</span></li>
-                  <li><span className="font-mono text-foreground/70">mod_quiz_get_user_quiz_attempts</span> — Intentos de quizzes <span className="text-primary/70">(Moodle 5.x)</span></li>
-                  <li><span className="font-mono text-foreground/70">mod_quiz_get_attempt_review</span> — Revisión detallada de intentos</li>
-                </ul>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3 italic">
-              Administración del sitio → Plugins → Web services → Funciones externas
-            </p>
-            <p className="text-xs text-muted-foreground mt-1 italic">
-              Compatible con Moodle 4.x y 5.x — Se detecta automáticamente la versión.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+
+              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
+                <Button type="submit" variant="gradient" className="w-full h-11 text-sm font-semibold" disabled={testing || !url || !token}>
+                  {testing ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Conectando...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Plug className="h-4 w-4" />
+                      Conectar
+                    </span>
+                  )}
+                </Button>
+              </motion.div>
+            </motion.form>
+
+            <motion.p
+              className="text-[11px] text-muted-foreground/60 text-center mt-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              Compatible con Moodle 4.x y 5.x
+            </motion.p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </div>
   );
 }
