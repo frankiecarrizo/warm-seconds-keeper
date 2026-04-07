@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Download, GraduationCap } from "lucide-react";
-import { getGraderReport, GraderReport as GRReport, MoodleConfig } from "@/lib/moodle-api";
+import { getGraderReport, GraderReport as GRReport } from "@/lib/moodle-api";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -13,23 +13,16 @@ interface Props {
   courseName: string;
 }
 
-function getConfig(): MoodleConfig | null {
-  const saved = localStorage.getItem("moodle-config");
-  return saved ? JSON.parse(saved) : null;
-}
-
 export function GraderReport({ courseId, courseName }: Props) {
   const [data, setData] = useState<GRReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const cfg = getConfig();
-    if (!cfg) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await getGraderReport(cfg, courseId);
+      const result = await getGraderReport(courseId);
       setData(result);
     } catch (e: any) {
       setError(e.message);

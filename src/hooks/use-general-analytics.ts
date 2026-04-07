@@ -39,8 +39,7 @@ export function useGeneralAnalytics() {
   const { isConnected, disconnect } = useMoodleConnection();
 
   // Initialize from cache if available and same Moodle URL
-  const savedCfg = localStorage.getItem("moodle-config");
-  const currentUrl = savedCfg ? JSON.parse(savedCfg).moodleUrl : null;
+  const currentUrl = localStorage.getItem("moodle-url");
   const initialData = (cachedData && cachedForUrl === currentUrl) ? cachedData : null;
 
   const [data, setData] = useState<GeneralData | null>(initialData);
@@ -65,27 +64,23 @@ export function useGeneralAnalytics() {
   }, [disconnect]);
 
   const fetchGeneralData = useCallback(async () => {
-    const saved = localStorage.getItem("moodle-config");
-    if (!saved) return;
-    const cfg = JSON.parse(saved);
-
     setLoading(true);
     setError(null);
     try {
       const [siteInfo, courses, categories, usersSummary] = await Promise.all([
-        getSiteInfo(cfg).catch((e: any) => {
+        getSiteInfo().catch((e: any) => {
           console.warn("getSiteInfo failed:", e.message);
           return null;
         }),
-        getAllCourses(cfg).catch((e: any) => {
+        getAllCourses().catch((e: any) => {
           console.warn("getAllCourses failed:", e.message);
           return [] as BasicCourse[];
         }),
-        getCategories(cfg).catch((e: any) => {
+        getCategories().catch((e: any) => {
           console.warn("getCategories failed:", e.message);
           return [] as MoodleCategory[];
         }),
-        getUsersSummary(cfg).catch(() => null),
+        getUsersSummary().catch(() => null),
       ]);
 
       if (!siteInfo && courses.length === 0) {
@@ -93,7 +88,7 @@ export function useGeneralAnalytics() {
       }
 
       const fallbackSiteInfo: SiteInfo = siteInfo || {
-        sitename: cfg.moodleUrl, siteurl: cfg.moodleUrl,
+        sitename: currentUrl || "", siteurl: currentUrl || "",
         username: "", fullname: "", userid: 0, release: "", version: "",
       };
 
@@ -103,11 +98,11 @@ export function useGeneralAnalytics() {
       const initialGeneralData: GeneralData = { siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary, loginLogs: [] };
       cacheSiteInfo(fallbackSiteInfo);
       cachedData = initialGeneralData;
-      cachedForUrl = cfg.moodleUrl;
+      cachedForUrl = currentUrl;
       setData(initialGeneralData);
 
       // Fetch login logs in parallel with enrollment
-      getLoginLogs(cfg).then((logs: LoginLogEntry[]) => {
+      getLoginLogs().then((logs: LoginLogEntry[]) => {
         setData((prev) => {
           const updated = prev ? { ...prev, loginLogs: logs || [] } : prev;
           if (updated) { cachedData = updated; }
@@ -127,7 +122,7 @@ export function useGeneralAnalytics() {
       for (let i = 0; i < courseIds.length; i += batchSize) {
         const batch = courseIds.slice(i, i + batchSize);
         try {
-          const summaries = await getCoursesEnrollmentSummary(cfg, batch);
+          const summaries = await getCoursesEnrollmentSummary(batch);
           allSummaries.push(...summaries);
           completedBatches++;
           // Only update progress counter, not summaries — avoid chart re-renders

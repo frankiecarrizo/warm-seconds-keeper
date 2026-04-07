@@ -6,7 +6,6 @@ import {
   getUsersSummary,
   getCoursesEnrollmentSummary,
   getLoginLogs,
-  MoodleConfig,
   SiteInfo,
   BasicCourse,
   MoodleCategory,
@@ -22,12 +21,6 @@ export interface LoginLogEntry {
   userid: number;
 }
 
-function getMoodleConfig(): MoodleConfig | null {
-  const saved = localStorage.getItem("moodle-config");
-  if (!saved) return null;
-  return JSON.parse(saved);
-}
-
 // ─── Base data: siteInfo + courses + categories + usersSummary ───
 export function useGeneralBaseData(enabled: boolean) {
   const { disconnect } = useMoodleConnection();
@@ -35,26 +28,23 @@ export function useGeneralBaseData(enabled: boolean) {
   const query = useQuery({
     queryKey: ["moodle", "general-base"],
     queryFn: async () => {
-      const cfg = getMoodleConfig();
-      if (!cfg) throw new Error("No config");
-
       const [siteInfo, courses, categories, usersSummary] = await Promise.all([
-        getSiteInfo(cfg).catch((e: any) => {
+        getSiteInfo().catch((e: any) => {
           if (e.message?.startsWith("TOKEN_INVALID")) throw e;
           console.warn("getSiteInfo failed:", e.message);
           return null;
         }),
-        getAllCourses(cfg).catch((e: any) => {
+        getAllCourses().catch((e: any) => {
           if (e.message?.startsWith("TOKEN_INVALID")) throw e;
           console.warn("getAllCourses failed:", e.message);
           return [] as BasicCourse[];
         }),
-        getCategories(cfg).catch((e: any) => {
+        getCategories().catch((e: any) => {
           if (e.message?.startsWith("TOKEN_INVALID")) throw e;
           console.warn("getCategories failed:", e.message);
           return [] as MoodleCategory[];
         }),
-        getUsersSummary(cfg).catch((e: any) => {
+        getUsersSummary().catch((e: any) => {
           if (e.message?.startsWith("TOKEN_INVALID")) throw e;
           return null;
         }),
@@ -65,7 +55,7 @@ export function useGeneralBaseData(enabled: boolean) {
       }
 
       const fallbackSiteInfo: SiteInfo = siteInfo || {
-        sitename: cfg.moodleUrl, siteurl: cfg.moodleUrl,
+        sitename: "", siteurl: "",
         username: "", fullname: "", userid: 0, release: "", version: "",
       };
 
@@ -109,9 +99,6 @@ export function useEnrollmentData(courseIds: number[], enabled: boolean) {
   const query = useQuery({
     queryKey: ["moodle", "enrollment", courseIds.length],
     queryFn: async () => {
-      const cfg = getMoodleConfig();
-      if (!cfg) throw new Error("No config");
-
       const batchSize = 20;
       const allSummaries: CourseEnrollmentSummary[] = [];
       const totalBatches = Math.ceil(courseIds.length / batchSize);
@@ -121,7 +108,7 @@ export function useEnrollmentData(courseIds: number[], enabled: boolean) {
       for (let i = 0; i < courseIds.length; i += batchSize) {
         const batch = courseIds.slice(i, i + batchSize);
         try {
-          const summaries = await getCoursesEnrollmentSummary(cfg, batch);
+          const summaries = await getCoursesEnrollmentSummary(batch);
           allSummaries.push(...summaries);
         } catch (e: any) {
           if (e.message?.startsWith("TOKEN_INVALID")) throw e;
@@ -148,9 +135,7 @@ export function useLoginLogs(enabled: boolean) {
   return useQuery({
     queryKey: ["moodle", "login-logs"],
     queryFn: async () => {
-      const cfg = getMoodleConfig();
-      if (!cfg) throw new Error("No config");
-      const logs = await getLoginLogs(cfg);
+      const logs = await getLoginLogs();
       return (logs || []) as LoginLogEntry[];
     },
     enabled,

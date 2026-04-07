@@ -5,7 +5,7 @@ import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
 
 export function useCourseAnalytics() {
-  const { isConnected, config, disconnect } = useMoodleConnection();
+  const { isConnected, disconnect } = useMoodleConnection();
   const [courses, setCourses] = useState<MoodleCourse[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<MoodleCourse | null>(null);
@@ -26,13 +26,10 @@ export function useCourseAnalytics() {
 
   const search = useCallback(async (term: string) => {
     if (!term.trim()) return;
-    const saved = localStorage.getItem("moodle-config");
-    if (!saved) return;
-    const cfg = JSON.parse(saved);
     setSearchLoading(true);
     setError(null);
     try {
-      const results = await searchCourses(cfg, term);
+      const results = await searchCourses(term);
       setCourses(results);
     } catch (e: any) {
       if (!handleTokenError(e)) {
@@ -57,13 +54,8 @@ export function useCourseAnalytics() {
     setError(null);
     setAnalysis("");
     setCourseData(null);
-
-    const saved = localStorage.getItem("moodle-config");
-    if (!saved) return;
-    const cfg = JSON.parse(saved);
-
     try {
-      const data = await getCourseOverviewData(cfg, selectedCourse.id);
+      const data = await getCourseOverviewData(selectedCourse.id);
       setCourseData(data);
     } catch (e: any) {
       if (!handleTokenError(e)) {
@@ -102,7 +94,6 @@ export function useCourseAnalytics() {
   }, [courseData, selectedCourse, handleTokenError]);
 
   return {
-    config,
     isConnected,
     courses,
     searchLoading,

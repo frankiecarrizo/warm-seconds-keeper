@@ -8,6 +8,7 @@ import { UserCharts } from "@/components/UserCharts";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { CourseDetail } from "@/components/CourseDetail";
 import { useMoodleAnalytics } from "@/hooks/use-moodle-analytics";
+import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { MoodleCertificate } from "@/lib/moodle-api";
 import { exportToCSV, exportToPDF } from "@/lib/export-utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,7 +21,6 @@ import {
 
 const Index = () => {
   const {
-    config,
     isConnected,
     connect,
     disconnect,
@@ -38,6 +38,7 @@ const Index = () => {
     error,
     setError,
   } = useMoodleAnalytics();
+  const { configUrl } = useMoodleConnection();
 
   const formatDate = (ts: number) => {
     if (!ts) return "N/A";
@@ -50,13 +51,13 @@ const Index = () => {
   };
 
   const handleCertificateDownload = async (cert: MoodleCertificate) => {
-    if (!userData || !config.moodleUrl || !config.moodleToken) return;
+    if (!userData) return;
 
     toast.info("Descargando certificado...");
 
     try {
       const { callProxy } = await import("@/lib/moodle-api");
-      const res = await callProxy(config, "download_certificate", {
+      const res = await callProxy("download_certificate", {
         url: cert.downloadUrl,
         type: cert.type,
         certificateId: cert.id,
@@ -133,7 +134,7 @@ const Index = () => {
             onConnect={connect}
             isConnected={false}
             onDisconnect={disconnect}
-            configUrl={config.moodleUrl}
+            configUrl={configUrl}
           />
         )}
 
@@ -322,7 +323,7 @@ const Index = () => {
                   </h3>
                   <div className="space-y-2">
                     {userData.courses.map((course) => (
-                      <CourseDetail key={course.id} course={course} config={config} />
+                    <CourseDetail key={course.id} course={course} />
                     ))}
                   </div>
                 </motion.div>

@@ -1,10 +1,10 @@
 import { useState, useCallback, createContext, useContext } from "react";
 import { toast } from "sonner";
+import { connectMoodle, disconnectMoodle } from "@/lib/moodle-api";
 
 export interface MoodleConnectionState {
   isConnected: boolean;
   configUrl: string;
-  config: { moodleUrl: string; moodleToken: string };
   connect: (url: string, token: string) => void;
   disconnect: () => void;
 }
@@ -18,11 +18,8 @@ export function useMoodleConnection() {
 }
 
 export function MoodleConnectionProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState(() => {
-    const saved = localStorage.getItem("moodle-config");
-    return saved ? JSON.parse(saved) : { moodleUrl: "", moodleToken: "" };
-  });
-  const [isConnected, setIsConnected] = useState(() => !!localStorage.getItem("moodle-config"));
+  const [configUrl, setConfigUrl] = useState(() => localStorage.getItem("moodle-url") || "");
+  const [isConnected, setIsConnected] = useState(() => !!localStorage.getItem("moodle-url"));
 
   const connect = useCallback((url: string, token: string) => {
     // Extract token from full URL if user pasted one
@@ -33,28 +30,36 @@ export function MoodleConnectionProvider({ children }: { children: React.ReactNo
         const wstoken = parsed.searchParams.get("wstoken");
         if (wstoken) {
           cleanToken = wstoken;
-          // Also extract moodleUrl from the pasted URL if user left url field as placeholder
           if (!url || url === "https://tucampus.edu/moodle") {
             url = `${parsed.protocol}//${parsed.host}${parsed.pathname.replace(/\/webservice\/rest\/server\.php$/, "")}`;
           }
         }
       }
     } catch { /* not a URL, use as-is */ }
-    const c = { moodleUrl: url.replace(/\/+$/, ""), moodleToken: cleanToken };
-    setConfig(c);
-    localStorage.setItem("moodle-config", JSON.stringify(c));
-    setIsConnected(true);
+    const cleanUrl = url.replace(/\/+$/, "");
+    // Store session in HttpOnly cookie via edge function
+    connectMoodle(cleanUrl, cleanToken)
+      .then(() => {
+        setConfigUrl(cleanUrl);
+        localStorage.setItem("moodle-url", cleanUrl);
+        setIsConnected(true);
+      })
+      .catch((e) => {
+        toast.error(e.message || "Error al conectar");
+      });
   }, []);
 
   const disconnect = useCallback(() => {
-    localStorage.removeItem("moodle-config");
-    setConfig({ moodleUrl: "", moodleToken: "" });
-    setIsConnected(false);
-    toast.info("Desconectado de Moodle");
+    disconnectMoodle().finally(() => {
+      localStorage.removeItem("moodle-url");
+      setConfigUrl("");
+      setIsConnected(false);
+      toast.info("Desconectado de Moodle");
+    });
   }, []);
 
   return (
-    <MoodleConnectionContext.Provider value={{ isConnected, configUrl: config.moodleUrl, config, connect, disconnect }}>
+    <MoodleConnectionContext.Provider value={{ isConnected, configUrl, connect, disconnect }}>
       {children}
     </MoodleConnectionContext.Provider>
   );

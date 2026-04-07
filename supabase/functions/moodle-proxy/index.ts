@@ -1,23 +1,151 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+// ── Allowed origins for CORS with credentials ──
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https?:\/\/localhost(:\d+)?$/,
+  /^https:\/\/.*\.lovableproject\.com$/,
+  /^https:\/\/.*\.lovable\.app$/,
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("origin") || "";
+  const allowed = ALLOWED_ORIGIN_PATTERNS.some((p) => p.test(origin));
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : "",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+// ── Cookie encryption helpers ──
+const COOKIE_NAME = "moodle_session";
+
+async function deriveKey(): Promise<CryptoKey> {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-secret-key";
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: new TextEncoder().encode("moodle-session-salt"), iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptConfig(config: { moodleUrl: string; moodleToken: string }): Promise<string> {
+  const key = await deriveKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(JSON.stringify(config));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+  const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptConfig(encrypted: string): Promise<{ moodleUrl: string; moodleToken: string }> {
+  const key = await deriveKey();
+  const binary = atob(encrypted);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const iv = bytes.slice(0, 12);
+  const ciphertext = bytes.slice(12);
+  const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+  return JSON.parse(new TextDecoder().decode(decrypted));
+}
+
+function parseCookies(cookieHeader: string | null): Record<string, string> {
+  if (!cookieHeader) return {};
+  return Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [k, ...v] = c.trim().split("=");
+      return [k, v.join("=")];
+    })
+  );
+}
+
+function buildSetCookie(value: string, maxAge: number): string {
+  return `${COOKIE_NAME}=${value}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${maxAge}`;
+}
 };
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { moodleUrl, moodleToken, action, params } = await req.json();
+    const body = await req.json();
+    const { action, params } = body;
 
-    if (!moodleUrl || !moodleToken) {
+    // ── Connect: encrypt and set cookie ──
+    if (action === "connect") {
+      const { moodleUrl, moodleToken } = body;
+      if (!moodleUrl || !moodleToken) {
+        return new Response(
+          JSON.stringify({ error: "Missing moodleUrl or moodleToken" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const encrypted = await encryptConfig({ moodleUrl, moodleToken });
+      const maxAge = 60 * 60 * 24 * 7; // 7 days
       return new Response(
-        JSON.stringify({ error: "Missing moodleUrl or moodleToken" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Set-Cookie": buildSetCookie(encodeURIComponent(encrypted), maxAge),
+          },
+        }
+      );
+    }
+
+    // ── Disconnect: clear cookie ──
+    if (action === "disconnect") {
+      return new Response(
+        JSON.stringify({ success: true }),
+        {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Set-Cookie": buildSetCookie("", 0),
+          },
+        }
+      );
+    }
+
+    // ── For all other actions, read credentials from cookie ──
+    const cookies = parseCookies(req.headers.get("cookie"));
+    const sessionCookie = cookies[COOKIE_NAME];
+    if (!sessionCookie) {
+      return new Response(
+        JSON.stringify({ error: "SESSION_EXPIRED: No hay sesión activa. Reconectá." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let moodleUrl: string;
+    let moodleToken: string;
+    try {
+      const config = await decryptConfig(decodeURIComponent(sessionCookie));
+      moodleUrl = config.moodleUrl;
+      moodleToken = config.moodleToken;
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "SESSION_INVALID: Sesión corrupta. Reconectá." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

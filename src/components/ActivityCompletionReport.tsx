@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Download, ClipboardList, Square, CheckSquare, XSquare } from "lucide-react";
-import { getActivityCompletionReport, ActivityCompletionReport as ACReport, MoodleConfig } from "@/lib/moodle-api";
+import { getActivityCompletionReport, ActivityCompletionReport as ACReport } from "@/lib/moodle-api";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 
@@ -13,23 +13,16 @@ interface Props {
   onDataLoaded?: (data: ACReport) => void;
 }
 
-function getConfig(): MoodleConfig | null {
-  const saved = localStorage.getItem("moodle-config");
-  return saved ? JSON.parse(saved) : null;
-}
-
 export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }: Props) {
   const [data, setData] = useState<ACReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const cfg = getConfig();
-    if (!cfg) return;
     setLoading(true);
     setError(null);
     try {
-      const result = await getActivityCompletionReport(cfg, courseId);
+      const result = await getActivityCompletionReport(courseId);
       setData(result);
       onDataLoaded?.(result);
     } catch (e: any) {

@@ -11,22 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Send, Users, BookOpen, User, Search, Loader2, CheckCircle2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { searchUsers, searchCourses, MoodleUser, MoodleConfig } from "@/lib/moodle-api";
+import { searchUsers, searchCourses, MoodleUser, callProxy } from "@/lib/moodle-api";
 
-const getConfig = (): MoodleConfig | null => {
-  const saved = localStorage.getItem("moodle-config");
-  return saved ? JSON.parse(saved) : null;
-};
-
-const callProxy = async (config: MoodleConfig, action: string, params?: Record<string, any>) => {
-  const { data, error } = await supabase.functions.invoke("moodle-proxy", {
-    body: { ...config, action, params },
-    headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-  });
-  if (error) throw new Error(error.message);
-  if (data?.error) throw new Error(data.error);
-  return data;
-};
 
 export default function NotificationsPage() {
   const { isConnected, connect, disconnect, configUrl } = useMoodleConnection();
@@ -113,11 +99,9 @@ function SendByCourse() {
 
   const handleSearch = async () => {
     if (!search.trim()) return;
-    const cfg = getConfig();
-    if (!cfg) return;
     setSearching(true);
     try {
-      const res = await searchCourses(cfg, search);
+      const res = await searchCourses(search);
       setCourses(res.filter((c: any) => c.id !== 1));
     } catch (e: any) {
       toast.error(e.message);
@@ -130,11 +114,9 @@ function SendByCourse() {
     setSelectedCourse(course);
     setAllUsers([]);
     setFilter("all");
-    const cfg = getConfig();
-    if (!cfg) return;
     setLoadingUsers(true);
     try {
-      const enriched = await callProxy(cfg, "get_enrolled_users_with_completion", { courseId: course.id });
+      const enriched = await callProxy("get_enrolled_users_with_completion", { courseId: course.id });
       setAllUsers(enriched || []);
     } catch (e: any) {
       toast.error(e.message);
@@ -145,12 +127,10 @@ function SendByCourse() {
 
   const handleSend = async () => {
     if (!message.trim() || !filteredUsers.length) return;
-    const cfg = getConfig();
-    if (!cfg) return;
     setSending(true);
     try {
       const userIds = filteredUsers.map((u) => u.id);
-      const res = await callProxy(cfg, "send_message", { userIds, text: message });
+      const res = await callProxy("send_message", { userIds, text: message });
       if (res?.hasErrors && res.errors?.length) {
         toast.warning(`Enviado con ${res.errors.length} errores: ${res.errors[0]}`);
       } else {
@@ -312,11 +292,9 @@ function SendByUser() {
 
   const handleSearch = async () => {
     if (!search.trim()) return;
-    const cfg = getConfig();
-    if (!cfg) return;
     setSearching(true);
     try {
-      const res = await searchUsers(cfg, search);
+      const res = await searchUsers(search);
       setUsers(res);
     } catch (e: any) {
       toast.error(e.message);
@@ -327,11 +305,9 @@ function SendByUser() {
 
   const handleSend = async () => {
     if (!message.trim() || !selectedUser) return;
-    const cfg = getConfig();
-    if (!cfg) return;
     setSending(true);
     try {
-      const res = await callProxy(cfg, "send_message", { userIds: [selectedUser.id], text: message });
+      const res = await callProxy("send_message", { userIds: [selectedUser.id], text: message });
       if (res?.hasErrors && res.errors?.length) {
         toast.warning(`Error: ${res.errors[0]}`);
       } else {
@@ -417,11 +393,9 @@ function SendToAll() {
   const [confirmed, setConfirmed] = useState(false);
 
   const loadUsers = async () => {
-    const cfg = getConfig();
-    if (!cfg) return;
     setLoading(true);
     try {
-      const users = await callProxy(cfg, "get_all_users");
+      const users = await callProxy("get_all_users");
       setUserCount(users.length);
     } catch (e: any) {
       toast.error(e.message);
@@ -432,13 +406,11 @@ function SendToAll() {
 
   const handleSend = async () => {
     if (!message.trim() || userCount === null) return;
-    const cfg = getConfig();
-    if (!cfg) return;
     setSending(true);
     try {
-      const users = await callProxy(cfg, "get_all_users");
+      const users = await callProxy("get_all_users");
       const userIds = users.map((u: any) => u.id);
-      const res = await callProxy(cfg, "send_message", { userIds, text: message });
+      const res = await callProxy("send_message", { userIds, text: message });
       if (res?.hasErrors && res.errors?.length) {
         toast.warning(`Enviado con ${res.errors.length} errores. Primero: ${res.errors[0]}`);
       } else {

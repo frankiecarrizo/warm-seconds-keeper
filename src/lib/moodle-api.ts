@@ -1,5 +1,4 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface MoodleUser {
   id: number;
@@ -53,10 +52,8 @@ export interface UserFullData {
   totalCourses: number;
 }
 
-export interface MoodleConfig {
-  moodleUrl: string;
-  moodleToken: string;
-}
+const PROXY_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moodle-proxy`;
+const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export interface MoodleCourse {
   id: number;
@@ -124,33 +121,22 @@ export const isAccessError = (message: string): boolean => {
 };
 
 export const callProxy = async (
-  config: MoodleConfig,
   action: string,
   params?: Record<string, any>
 ) => {
-  const { data, error } = await supabase.functions.invoke("moodle-proxy", {
-    body: { ...config, action, params },
+  const response = await fetch(PROXY_URL, {
+    method: "POST",
     headers: {
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+      apikey: API_KEY,
     },
+    credentials: "include",
+    body: JSON.stringify({ action, params }),
   });
 
-  let resolvedError: string | undefined;
-
-  if (data?.error) {
-    resolvedError = data.error;
-  }
-
-  if (error instanceof FunctionsHttpError) {
-    try {
-      const errorBody = await error.context.json();
-      resolvedError = errorBody?.error || error.message;
-    } catch {
-      resolvedError = error.message;
-    }
-  } else if (error) {
-    resolvedError = error.message;
-  }
+  const data = await response.json().catch(() => null);
+  const resolvedError = data?.error;
 
   if (resolvedError) {
     if (isTokenError(resolvedError)) {
@@ -159,18 +145,51 @@ export const callProxy = async (
     if (isAccessError(resolvedError)) {
       throw new Error("ACCESS_DENIED: El token no tiene permisos.");
     }
+    if (resolvedError.startsWith("SESSION_")) {
+      throw new Error(resolvedError);
+    }
     throw new Error(resolvedError);
   }
 
   return data;
 };
 
-export const searchUsers = async (config: MoodleConfig, search: string) => {
-  return callProxy(config, "search_users", { search });
+export const connectMoodle = async (moodleUrl: string, moodleToken: string) => {
+  const response = await fetch(PROXY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+      apikey: API_KEY,
+    },
+    credentials: "include",
+    body: JSON.stringify({ action: "connect", moodleUrl, moodleToken }),
+  });
+  const data = await response.json();
+  if (data?.error) throw new Error(data.error);
+  return data;
 };
 
-export const searchCourses = async (config: MoodleConfig, search: string) => {
-  const data = await callProxy(config, "search_courses", { search });
+export const disconnectMoodle = async () => {
+  const response = await fetch(PROXY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+      apikey: API_KEY,
+    },
+    credentials: "include",
+    body: JSON.stringify({ action: "disconnect" }),
+  });
+  return response.json();
+};
+
+export const searchUsers = async (search: string) => {
+  return callProxy("search_users", { search });
+};
+
+export const searchCourses = async (search: string) => {
+  const data = await callProxy("search_courses", { search });
   return (data.courses || []).map((c: any) => ({
     id: c.id,
     shortname: c.shortname,
@@ -181,53 +200,44 @@ export const searchCourses = async (config: MoodleConfig, search: string) => {
   }));
 };
 
-export const getCourseOverviewData = async (config: MoodleConfig, courseId: number) => {
-  return callProxy(config, "get_course_overview_data", { courseId });
+export const getCourseOverviewData = async (courseId: number) => {
+  return callProxy("get_course_overview_data", { courseId });
 };
 
-export const getUserFullData = async (config: MoodleConfig, userId: number) => {
-  return callProxy(config, "get_user_full_data", { userId });
+export const getUserFullData = async (userId: number) => {
+  return callProxy("get_user_full_data", { userId });
 };
 
-export const getUsersSummary = async (config: MoodleConfig) => {
-  return callProxy(config, "get_users_summary");
+export const getUsersSummary = async () => {
+  return callProxy("get_users_summary");
 };
 
-export const getSiteInfo = async (config: MoodleConfig) => {
-  return callProxy(config, "get_site_info");
+export const getSiteInfo = async () => {
+  return callProxy("get_site_info");
 };
 
-export const getQuizAttemptReview = async (
-  config: MoodleConfig,
-  attemptId: number
-) => {
-  return callProxy(config, "get_quiz_attempt_review", { attemptId });
+export const getQuizAttemptReview = async (attemptId: number) => {
+  return callProxy("get_quiz_attempt_review", { attemptId });
 };
 
-export const getCourseContents = async (
-  config: MoodleConfig,
-  courseId: number
-) => {
-  return callProxy(config, "get_course_contents", { courseId });
+export const getCourseContents = async (courseId: number) => {
+  return callProxy("get_course_contents", { courseId });
 };
 
-export const getCategories = async (config: MoodleConfig) => {
-  return callProxy(config, "get_categories");
+export const getCategories = async () => {
+  return callProxy("get_categories");
 };
 
-export const getAllCourses = async (config: MoodleConfig) => {
-  return callProxy(config, "get_all_courses");
+export const getAllCourses = async () => {
+  return callProxy("get_all_courses");
 };
 
-export const getCoursesEnrollmentSummary = async (
-  config: MoodleConfig,
-  courseIds: number[]
-) => {
-  return callProxy(config, "get_courses_enrollment_summary", { courseIds });
+export const getCoursesEnrollmentSummary = async (courseIds: number[]) => {
+  return callProxy("get_courses_enrollment_summary", { courseIds });
 };
 
-export const getLoginLogs = async (config: MoodleConfig) => {
-  return callProxy(config, "get_login_logs");
+export const getLoginLogs = async () => {
+  return callProxy("get_login_logs");
 };
 
 export interface ActivityCompletionReport {
@@ -252,13 +262,18 @@ export interface GraderReport {
   }[];
 }
 
-export const getActivityCompletionReport = async (config: MoodleConfig, courseId: number): Promise<ActivityCompletionReport> => {
-  return callProxy(config, "get_activity_completion_report", { courseId });
+export const getActivityCompletionReport = async (courseId: number): Promise<ActivityCompletionReport> => {
+  return callProxy("get_activity_completion_report", { courseId });
 };
 
-export const getGraderReport = async (config: MoodleConfig, courseId: number): Promise<GraderReport> => {
-  return callProxy(config, "get_grader_report", { courseId });
+export const getGraderReport = async (courseId: number): Promise<GraderReport> => {
+  return callProxy("get_grader_report", { courseId });
 };
+
+// Keep MoodleConfig as a lightweight type for display-only usage
+export interface MoodleConfig {
+  moodleUrl: string;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Missing types referenced by hooks/components
@@ -331,8 +346,8 @@ async function streamFromEdgeFunction(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${API_KEY}`,
+        apikey: API_KEY,
       },
       body: JSON.stringify(body),
     });
