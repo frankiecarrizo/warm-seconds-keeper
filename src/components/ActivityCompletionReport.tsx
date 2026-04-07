@@ -60,9 +60,10 @@ export function ActivityCompletionReport({ courseId, courseName }: Props) {
   }, [data, courseName]);
 
   const getIcon = (state: number | undefined) => {
-    if (state === 1 || state === 2) return <CheckCircle2 className="h-4 w-4 text-success" />;
-    if (state === 3) return <XCircle className="h-4 w-4 text-destructive" />;
-    return <MinusCircle className="h-4 w-4 text-muted-foreground/40" />;
+    if (state === 1 || state === 2) return <CheckSquare className="h-4 w-4 text-success" />;
+    if (state === 3) return <XSquare className="h-4 w-4 text-destructive" />;
+    if (state === 0) return <Square className="h-4 w-4 text-muted-foreground/50" />;
+    return <Square className="h-4 w-4 text-muted-foreground/25" />;
   };
 
   if (!data && !loading) {
