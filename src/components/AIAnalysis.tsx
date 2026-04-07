@@ -357,6 +357,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
             </>
           )}
         </CardContent>
+        )}
       </Card>
     </motion.div>
   );
