@@ -565,6 +565,67 @@ serve(async (req) => {
             }
           }
 
+          // Fallback for certificates when core_course_get_contents returns empty (Moodle 4.0)
+          if (certificates.length === 0) {
+            const seenCertKeys = new Set<string>();
+            // Fallback 1: try mod_customcert_get_certificates_by_courses
+            try {
+              const customcerts = await callMoodle("mod_customcert_get_certificates_by_courses", {
+                "courseids[0]": String(course.id),
+              });
+              for (const cert of (customcerts?.customcerts || [])) {
+                const key = `customcert-${cert.id}`;
+                if (!seenCertKeys.has(key)) {
+                  seenCertKeys.add(key);
+                  certificates.push({
+                    id: cert.id,
+                    cmid: cert.coursemodule || cert.cmid || 0,
+                    name: cert.name,
+                    type: "customcert",
+                    courseId: course.id,
+                    courseName: course.fullname,
+                  });
+                }
+              }
+            } catch (e: any) {
+              console.log("cert fallback 1 (get_certificates_by_courses) not available:", e?.message);
+            }
+
+            // Fallback 2: scan gradebook for certificate items
+            if (certificates.length === 0 && Array.isArray(grades)) {
+              for (const item of grades) {
+                if (item.itemmodule === "customcert" || item.itemmodule === "certificate") {
+                  const key = `${item.itemmodule}-${item.iteminstance}`;
+                  if (!seenCertKeys.has(key)) {
+                    seenCertKeys.add(key);
+                    certificates.push({
+                      id: item.iteminstance,
+                      cmid: item.cmid || 0,
+                      name: stripHtml(item.itemname || "Certificado"),
+                      type: item.itemmodule,
+                      courseId: course.id,
+                      courseName: course.fullname,
+                    });
+                  }
+                }
+              }
+            }
+
+            // Fallback 3: try course_search or enrolled-based discovery
+            if (certificates.length === 0) {
+              try {
+                const courseDetail = await callMoodle("core_course_get_courses_by_field", {
+                  field: "id",
+                  value: String(course.id),
+                });
+                const courseInfo = courseDetail?.courses?.[0];
+                if (courseInfo?.overviewfiles) {
+                  // Not directly useful, but check course modules via different approach
+                }
+              } catch {}
+            }
+          }
+
           if (quizzes.length === 0) {
             try {
               const quizResponse = await callMoodle("mod_quiz_get_quizzes_by_courses", {
