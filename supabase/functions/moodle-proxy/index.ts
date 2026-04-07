@@ -477,9 +477,14 @@ serve(async (req) => {
       case "get_quiz_attempt_review": {
         const attemptId = params?.attemptId;
         if (!attemptId) throw { message: "Missing attemptId", status: 400 };
-        result = await callMoodle("mod_quiz_get_attempt_review", {
-          attemptid: String(attemptId),
-        });
+        try {
+          result = await callMoodle("mod_quiz_get_attempt_review", {
+            attemptid: String(attemptId),
+          });
+        } catch (e: any) {
+          // Access exceptions are common when the token lacks mod/quiz:viewreports
+          result = { error: e.message || "No se pudo obtener la revisión del intento", accessDenied: true };
+        }
         break;
       }
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { MoodleCourseData, getQuizAttemptReview, streamCourseAnalysis } from "@/lib/moodle-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,10 @@ export function CourseDetail({ course }: CourseDetailProps) {
     setLoadingAttempt(attemptId);
     try {
       const data = await getQuizAttemptReview(attemptId);
+      if (data?.accessDenied) {
+        toast.info("No se puede ver la revisión: permisos insuficientes en este quiz.");
+        return;
+      }
       setQuizReview((prev) => ({ ...prev, [attemptId]: data }));
     } catch (err) {
       console.error("Error loading attempt review:", err);
