@@ -24,10 +24,11 @@ export function TopNeverAccessedWidget({ data }: Props) {
         <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} layout="vertical" margin={{ top: 0, right: 15, bottom: 0, left: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 10 }} className="fill-muted-foreground" />
-              <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 9 }} className="fill-muted-foreground" />
+              <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--foreground))" }} />
+              <YAxis type="category" dataKey="name" width={220} tick={{ fontSize: 9, fill: "hsl(var(--foreground))" }} />
               <Tooltip
-                contentStyle={{ fontSize: 12, background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                contentStyle={{ fontSize: 12, background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                labelStyle={{ color: "hsl(var(--popover-foreground))" }}
                 formatter={(value: number) => [`${value} estudiantes`, "Sin ingresar"]}
               />
               <Bar dataKey="sinIngreso" radius={[0, 4, 4, 0]}>
