@@ -125,7 +125,7 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
     completed: "Finalizados",
   };
 
-  const selectedTeacher = teachers.find((t) => String(t.id) === selectedTeacherId);
+  const selectedTeacher = selectedTeacherId && selectedTeacherId !== "none" ? teachers.find((t) => String(t.id) === selectedTeacherId) : undefined;
 
   // Replace template variables per-user
   const resolveTemplate = (template: string, user: { id: number; fullname: string }) => {
