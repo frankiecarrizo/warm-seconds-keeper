@@ -879,6 +879,64 @@ serve(async (req) => {
       }
 
       case "download_certificate": {
+      }
+
+      // ── Get all issued certificates for a course ──────────────
+      case "get_course_certificates": {
+        const courseId = params?.courseId;
+        if (!courseId) throw { message: "Missing courseId", status: 400 };
+
+        // Get course contents to find certificate modules
+        const contents = await callMoodle("core_course_get_contents", {
+          courseid: String(courseId),
+        }).catch(() => []);
+
+        const certModules: any[] = [];
+        for (const section of contents) {
+          for (const mod of (section.modules || [])) {
+            if (mod.modname === "customcert" || mod.modname === "certificate") {
+              certModules.push({ id: mod.instance, cmid: mod.id, name: mod.name, type: mod.modname });
+            }
+          }
+        }
+
+        const allCerts: any[] = [];
+        for (const cert of certModules) {
+          if (cert.type === "customcert") {
+            try {
+              const issued = await callMoodle("mod_customcert_get_issued_certificates", {
+                certificateid: String(cert.id),
+              });
+              for (const issue of (issued.issues || [])) {
+                let downloadUrl = "";
+                if (issue.fileurl) {
+                  downloadUrl = issue.fileurl;
+                } else {
+                  downloadUrl = `${moodleUrl}/webservice/pluginfile.php/${issue.contextid || ""}/mod_customcert/issues/${issue.id}/certificate.pdf`;
+                }
+                allCerts.push({
+                  id: cert.id,
+                  cmid: cert.cmid,
+                  name: cert.name,
+                  type: cert.type,
+                  courseId,
+                  issued: true,
+                  issueDate: issue.timecreated,
+                  code: issue.code || null,
+                  downloadUrl,
+                  userName: issue.fullname || `User ${issue.userid}`,
+                  userId: issue.userid,
+                });
+              }
+            } catch {}
+          }
+        }
+
+        result = allCerts;
+        break;
+      }
+
+      case "download_certificate": {
         const { url: certUrl, type, certificateId, userId } = params;
         if (!certUrl) throw { message: "Missing certificate url", status: 400 };
         if (type === "customcert" && certificateId && userId) {
