@@ -70,6 +70,7 @@ async function downloadSingleCert(config: MoodleConfig, cert: CertificateDisplay
       type: cert.type,
       certificateId: cert.id,
       userId: cert.userId,
+      cmid: cert.cmid,
     });
     if (!res.downloadable || !res.base64) return null;
     const binary = atob(res.base64);
