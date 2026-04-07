@@ -264,7 +264,7 @@ const GeneralPage = () => {
 
     return (
       <Card className="glass-card overflow-hidden">
-        <CardContent className="p-4 text-center flex flex-col items-center justify-center min-h-[88px] gap-2">
+        <CardContent className="p-4 text-center flex flex-col items-center justify-center min-h-[88px] gap-1.5">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
           <AnimatePresence mode="wait">
             <motion.p
@@ -273,7 +273,7 @@ const GeneralPage = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3 }}
-              className="text-[10px] leading-tight text-muted-foreground text-center px-1"
+              className="text-xs leading-snug text-muted-foreground text-center px-1"
             >
               {LOADING_MESSAGES[msgIdx]}
             </motion.p>
@@ -409,48 +409,48 @@ const GeneralPage = () => {
 
         {/* Stat cards */}
         {(() => {
-          const row1Cards = [
-            <Card key="courses" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
-                <p className="text-2xl font-bold text-foreground">{courses.length}</p>
-                <p className="text-xs text-muted-foreground">Cursos</p>
-              </CardContent>
-            </Card>,
-            <Card key="users" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <Users className="h-5 w-5 text-info mx-auto mb-1" />
-                <p className="text-2xl font-bold text-info">{usersSummary?.total || 0}</p>
-                <p className="text-xs text-muted-foreground">Usuarios</p>
-              </CardContent>
-            </Card>,
-            <Card key="active" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <UserCheck className="h-5 w-5 text-success mx-auto mb-1" />
-                <p className="text-2xl font-bold text-success">{usersSummary?.active || 0}</p>
-                <p className="text-xs text-muted-foreground">Activos</p>
-              </CardContent>
-            </Card>,
-            <Card key="suspended" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <UserX className="h-5 w-5 text-warning mx-auto mb-1" />
-                <p className="text-2xl font-bold text-warning">{usersSummary?.suspended || 0}</p>
-                <p className="text-xs text-muted-foreground">Suspendidos</p>
-              </CardContent>
-            </Card>,
-            enrollmentLoading ? <StatSkeleton key="teachers-skel" index={4} /> : (
+          const row1Cards = enrollmentLoading
+            ? [0,1,2,3,4].map(i => <StatSkeleton key={`skel-r1-${i}`} index={i} />)
+            : [
+              <Card key="courses" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-foreground">{courses.length}</p>
+                  <p className="text-xs text-muted-foreground">Cursos</p>
+                </CardContent>
+              </Card>,
+              <Card key="users" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <Users className="h-5 w-5 text-info mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-info">{usersSummary?.total || 0}</p>
+                  <p className="text-xs text-muted-foreground">Usuarios</p>
+                </CardContent>
+              </Card>,
+              <Card key="active" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <UserCheck className="h-5 w-5 text-success mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-success">{usersSummary?.active || 0}</p>
+                  <p className="text-xs text-muted-foreground">Activos</p>
+                </CardContent>
+              </Card>,
+              <Card key="suspended" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <UserX className="h-5 w-5 text-warning mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-warning">{usersSummary?.suspended || 0}</p>
+                  <p className="text-xs text-muted-foreground">Suspendidos</p>
+                </CardContent>
+              </Card>,
               <Card key="teachers" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <GraduationCap className="h-5 w-5 text-accent-foreground mx-auto mb-1" />
                   <p className="text-2xl font-bold text-accent-foreground">{stats.totalTeachers}</p>
                   <p className="text-xs text-muted-foreground">Docentes</p>
                 </CardContent>
-              </Card>
-            ),
-          ];
+              </Card>,
+            ];
 
           const row2Cards = enrollmentLoading
-            ? [1,2,3,4,5].map(i => <StatSkeleton key={`skel-${i}`} index={i + 4} />)
+            ? [5,6,7,8,9].map(i => <StatSkeleton key={`skel-r2-${i}`} index={i} />)
             : [
               <Card key="enrollments" className="glass-card">
                 <CardContent className="p-4 text-center">
