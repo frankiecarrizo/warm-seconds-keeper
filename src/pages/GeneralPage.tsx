@@ -125,6 +125,25 @@ const GeneralPage = () => {
       .sort((a, b) => b.finalizaciones - a.finalizaciones)
       .slice(0, 5);
 
+    const neverAccessedByCoursData = courses
+      .map((c) => {
+        const s = summaryMap.get(c.id);
+        return { name: c.fullname.length > 40 ? c.fullname.slice(0, 40) + "…" : c.fullname, sinIngreso: s?.neverAccessed || 0 };
+      })
+      .filter((d) => d.sinIngreso > 0)
+      .sort((a, b) => b.sinIngreso - a.sinIngreso)
+      .slice(0, 5);
+
+    const accessByCoursData = courses
+      .map((c) => {
+        const s = summaryMap.get(c.id);
+        const accessed = (s?.totalStudents || 0) - (s?.neverAccessed || 0);
+        return { name: c.fullname.length > 40 ? c.fullname.slice(0, 40) + "…" : c.fullname, ingresos: accessed };
+      })
+      .filter((d) => d.ingresos > 0)
+      .sort((a, b) => b.ingresos - a.ingresos)
+      .slice(0, 5);
+
     const completionPieData = [
       { name: "Finalizaron", value: stats.totalCompleted },
       { name: "Sin finalizar", value: stats.totalChecked - stats.totalCompleted },
@@ -142,7 +161,7 @@ const GeneralPage = () => {
       { name: "Eliminados", value: usersSummary.deleted },
     ].filter((d) => d.value > 0) : [];
 
-    return { enrollmentChartData, completionChartData, completionPieData, accessPieData, userStatusPieData, summaryMap };
+    return { enrollmentChartData, completionChartData, completionPieData, accessPieData, userStatusPieData, summaryMap, neverAccessedByCoursData, accessByCoursData };
   }, [dataReady, enrollmentSummaries, courses, usersSummary, stats]);
 
   const formatDate = (ts: number) => {
