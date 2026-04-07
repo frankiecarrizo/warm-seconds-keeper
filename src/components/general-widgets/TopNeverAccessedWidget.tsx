@@ -1,8 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 import { GripVertical, UserMinus } from "lucide-react";
-
-const COLORS = ["hsl(0, 72%, 51%)", "hsl(0, 65%, 58%)", "hsl(0, 55%, 62%)", "hsl(0, 45%, 66%)", "hsl(0, 35%, 70%)"];
 
 interface Props {
   data: { name: string; sinIngreso: number }[];
@@ -10,6 +7,7 @@ interface Props {
 
 export function TopNeverAccessedWidget({ data }: Props) {
   if (data.length === 0) return null;
+  const max = Math.max(...data.map(d => d.sinIngreso));
 
   return (
     <Card className="glass-card h-full">
@@ -20,23 +18,28 @@ export function TopNeverAccessedWidget({ data }: Props) {
           Top 5 — Sin Ingresar Nunca
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0 pb-4">
-        <div className="h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 15, bottom: 0, left: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--foreground))" }} />
-              <YAxis type="category" dataKey="name" width={220} tick={{ fontSize: 9, fill: "hsl(var(--foreground))" }} />
-              <Tooltip
-                contentStyle={{ fontSize: 12, backgroundColor: "hsl(var(--muted))", color: "hsl(var(--foreground))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
-                formatter={(value: number) => [`${value} estudiantes`, "Sin ingresar"]}
+      <CardContent className="pt-0 pb-4 space-y-2.5">
+        {data.map((item, i) => (
+          <div key={i} className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-foreground truncate flex-1" title={item.name}>
+                {item.name.length > 45 ? item.name.slice(0, 45) + "…" : item.name}
+              </span>
+              <span className="text-xs font-semibold text-destructive tabular-nums shrink-0">
+                {item.sinIngreso}
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${(item.sinIngreso / max) * 100}%`,
+                  backgroundColor: `hsl(0, ${72 - i * 8}%, ${51 + i * 4}%)`,
+                }}
               />
-              <Bar dataKey="sinIngreso" radius={[0, 4, 4, 0]}>
-                {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+            </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );
