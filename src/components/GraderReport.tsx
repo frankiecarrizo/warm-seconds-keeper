@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,6 +18,7 @@ export function GraderReport({ courseId, courseName }: Props) {
   const [data, setData] = useState<GRReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -127,6 +129,10 @@ export function GraderReport({ courseId, courseName }: Props) {
 
   if (!data) return null;
 
+  const PAGE_SIZE = 50;
+  const totalPages = Math.ceil(data.students.length / PAGE_SIZE);
+  const paginatedStudents = data.students.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <Card className="glass-card">
@@ -143,7 +149,7 @@ export function GraderReport({ courseId, courseName }: Props) {
           </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-[500px]">
+          <ScrollArea className="h-[500px]">
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
@@ -160,7 +166,7 @@ export function GraderReport({ courseId, courseName }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.students.map(s => (
+                  {paginatedStudents.map(s => (
                     <tr key={s.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="sticky left-0 bg-card z-10 p-2 font-medium">{s.fullname}</td>
                       {data.gradeItems.map(g => {
@@ -194,6 +200,21 @@ export function GraderReport({ courseId, courseName }: Props) {
               </table>
             </div>
           </ScrollArea>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-3 border-t border-border mt-2">
+              <span className="text-xs text-muted-foreground">
+                Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, data.students.length)} de {data.students.length}
+              </span>
+              <div className="flex gap-1">
+                <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>

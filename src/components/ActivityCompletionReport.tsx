@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Download, ClipboardList, Square, CheckSquare, XSquare } from "lucide-react";
+import { Loader2, Download, ClipboardList, Square, CheckSquare, XSquare, ChevronLeft, ChevronRight } from "lucide-react";
 import { getActivityCompletionReport, ActivityCompletionReport as ACReport } from "@/lib/moodle-api";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
   const [data, setData] = useState<ACReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,6 +65,18 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
     return <Square className="h-4 w-4 text-muted-foreground/25" />;
   };
 
+  const sortedStudents = useMemo(() => {
+    if (!data) return [];
+    return [...data.students].sort((a, b) => {
+      const count = (s: typeof a) =>
+        data.activities.reduce((sum, act) => {
+          const st = s.completions[act.cmid];
+          return sum + (st === 1 || st === 2 ? 1 : 0);
+        }, 0);
+      return count(a) - count(b);
+    });
+  }, [data]);
+
   if (!data && !loading) {
     return (
       <Card className="glass-card">
@@ -93,6 +106,10 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
 
   if (!data) return null;
 
+  const PAGE_SIZE = 50;
+  const totalPages = Math.ceil(sortedStudents.length / PAGE_SIZE);
+  const paginatedStudents = sortedStudents.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <Card className="glass-card">
@@ -109,7 +126,7 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
           </div>
         </CardHeader>
         <CardContent>
-          <ScrollArea className="max-h-[500px]">
+          <ScrollArea className="h-[500px]">
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
                 <thead>
@@ -125,14 +142,7 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
                   </tr>
                 </thead>
                 <tbody>
-                  {[...data.students].sort((a, b) => {
-                    const count = (s: typeof a) =>
-                      data.activities.reduce((sum, act) => {
-                        const st = s.completions[act.cmid];
-                        return sum + (st === 1 || st === 2 ? 1 : 0);
-                      }, 0);
-                    return count(a) - count(b);
-                  }).map(s => (
+                  {paginatedStudents.map(s => (
                     <tr key={s.id} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="sticky left-0 bg-card z-10 p-2 font-medium">{s.fullname}</td>
                       {data.activities.map(a => (
@@ -146,6 +156,21 @@ export function ActivityCompletionReport({ courseId, courseName, onDataLoaded }:
               </table>
             </div>
           </ScrollArea>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-3 border-t border-border mt-2">
+              <span className="text-xs text-muted-foreground">
+                Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sortedStudents.length)} de {sortedStudents.length}
+              </span>
+              <div className="flex gap-1">
+                <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <Button variant="outline" size="icon" className="h-7 w-7" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
