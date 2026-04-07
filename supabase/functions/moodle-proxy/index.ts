@@ -1569,6 +1569,44 @@ case "get_activity_completion_report": {
           console.log("[certs] Gradebook fallback failed:", e?.message);
         }
 
+        // Method 4: completion status - lists ALL activity modules including certs
+        try {
+          // We need a user ID; get first enrolled user
+          const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
+            courseid: String(courseId),
+            "options[0][name]": "limitnumber",
+            "options[0][value]": "1",
+          });
+          const sampleUserId = enrolled?.[0]?.id;
+          if (sampleUserId) {
+            const completion = await callMoodle("core_completion_get_activities_completion_status", {
+              courseid: String(courseId),
+              userid: String(sampleUserId),
+            });
+            for (const act of (completion?.statuses || [])) {
+              if (act.modname === "customcert" || act.modname === "certificate") {
+                // cmid is the course module id, we need the instance id too
+                // Try to get module details
+                try {
+                  const modInfo = await callMoodle("core_course_get_course_module", {
+                    cmid: String(act.cmid),
+                  });
+                  const cm = modInfo?.cm;
+                  if (cm) {
+                    addCert(cm.instance, cm.id, cm.name || "Certificado", cm.modname || "customcert");
+                  }
+                } catch {
+                  // Use cmid as both id and cmid as fallback
+                  addCert(act.cmid, act.cmid, "Certificado", act.modname || "customcert");
+                }
+              }
+            }
+            console.log(`[certs] After completion scan: ${certModules.length} total certs`);
+          }
+        } catch (e: any) {
+          console.log("[certs] Completion status fallback failed:", e?.message);
+        }
+
         console.log(`[certs] Total cert modules found: ${certModules.length}`);
 
         if (certModules.length === 0) {
