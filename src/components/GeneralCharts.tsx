@@ -49,7 +49,6 @@ export function GeneralCharts(props: GeneralChartsProps) {
   const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
     storageKey: "general-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
-    forceHideAll: props.isFreshLoad,
   });
 
   // Each widget component is only mounted when visible.
