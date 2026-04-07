@@ -27,8 +27,8 @@ export function TopAccessWidget({ data }: Props) {
               <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--foreground))" }} />
               <YAxis type="category" dataKey="name" width={220} tick={{ fontSize: 9, fill: "hsl(var(--foreground))" }} />
               <Tooltip
-                contentStyle={{ fontSize: 12, background: "hsl(var(--popover))", color: "hsl(var(--popover-foreground))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                labelStyle={{ color: "hsl(var(--popover-foreground))" }}
+                contentStyle={{ fontSize: 12, backgroundColor: "hsl(var(--muted))", color: "hsl(var(--foreground))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
                 formatter={(value: number) => [`${value} estudiantes`, "Ingresaron"]}
               />
               <Bar dataKey="ingresos" radius={[0, 4, 4, 0]}>
