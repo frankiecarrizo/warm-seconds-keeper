@@ -262,7 +262,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
               Análisis con IA
               {loading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
             </CardTitle>
-            {sections.length > 2 && (
+            {sections.length > 4 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
                   {currentSlide + 1} / {totalPages}
