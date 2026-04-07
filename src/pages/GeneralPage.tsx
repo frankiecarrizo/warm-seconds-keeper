@@ -1,4 +1,4 @@
-import { useMemo, useState, lazy, Suspense, useCallback } from "react";
+import { useMemo, useState, useEffect, lazy, Suspense, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet, Brain } from "lucide-react";
 import { exportGeneralToCSV, exportGeneralToPDF } from "@/lib/export-utils";
@@ -239,15 +239,49 @@ const GeneralPage = () => {
     }
   };
 
-  const StatSkeleton = () => (
-    <Card className="glass-card">
-      <CardContent className="p-4 text-center space-y-2">
-        <Skeleton className="h-5 w-5 mx-auto rounded-full" />
-        <Skeleton className="h-7 w-12 mx-auto" />
-        <Skeleton className="h-3 w-16 mx-auto" />
-      </CardContent>
-    </Card>
-  );
+  const LOADING_MESSAGES = [
+    "Recopilando datos de tu campus… ☕",
+    "Peor es entrar curso por curso, ¿no? 😉",
+    "Consultando a Moodle… está pensando 🤔",
+    "Esto puede tardar según la cantidad de cursos y usuarios",
+    "Juntando inscripciones, notas y accesos… 📊",
+    "Ya falta poco, paciencia de docente 🧑‍🏫",
+    "Procesando lotes de datos… va todo bien ✅",
+    "Acá vas a tener todo junto, sin click por click 🎯",
+    "Moodle respondiendo… a su ritmo 🐢",
+    "Preparando tu resumen completo… 🚀",
+  ];
+
+  const StatSkeleton = ({ index = 0 }: { index?: number }) => {
+    const [msgIdx, setMsgIdx] = useState(index % LOADING_MESSAGES.length);
+    
+    useEffect(() => {
+      const id = setInterval(() => {
+        setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
+      }, 3000 + index * 400);
+      return () => clearInterval(id);
+    }, [index]);
+
+    return (
+      <Card className="glass-card overflow-hidden">
+        <CardContent className="p-4 text-center flex flex-col items-center justify-center min-h-[88px] gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={msgIdx}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="text-[10px] leading-tight text-muted-foreground text-center px-1"
+            >
+              {LOADING_MESSAGES[msgIdx]}
+            </motion.p>
+          </AnimatePresence>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const ChartsSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -404,7 +438,7 @@ const GeneralPage = () => {
                 <p className="text-xs text-muted-foreground">Suspendidos</p>
               </CardContent>
             </Card>,
-            enrollmentLoading ? <StatSkeleton key="teachers-skel" /> : (
+            enrollmentLoading ? <StatSkeleton key="teachers-skel" index={4} /> : (
               <Card key="teachers" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <GraduationCap className="h-5 w-5 text-accent-foreground mx-auto mb-1" />
@@ -416,7 +450,7 @@ const GeneralPage = () => {
           ];
 
           const row2Cards = enrollmentLoading
-            ? [1,2,3,4,5].map(i => <StatSkeleton key={`skel-${i}`} />)
+            ? [1,2,3,4,5].map(i => <StatSkeleton key={`skel-${i}`} index={i + 4} />)
             : [
               <Card key="enrollments" className="glass-card">
                 <CardContent className="p-4 text-center">
