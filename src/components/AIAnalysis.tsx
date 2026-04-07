@@ -186,9 +186,9 @@ function FullSectionCard({ section }: { section: ParsedSection }) {
 }
 
 export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
+  const [collapsed, setCollapsed] = useState(false);
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: false, slidesToScroll: 1 });
   const [canScrollPrev, setCanScrollPrev] = useState(false);
-  const [canScrollNext, setCanScrollNext] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const onSelect = useCallback(() => {
