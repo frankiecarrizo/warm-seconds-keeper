@@ -74,7 +74,6 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
 function buildSetCookie(value: string, maxAge: number): string {
   return `${COOKIE_NAME}=${value}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${maxAge}`;
 }
-};
 
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
