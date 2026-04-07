@@ -8,7 +8,7 @@ import { BookOpen, FolderTree, GripVertical, TrendingUp, Flame } from "lucide-re
 import { motion } from "framer-motion";
 import { useSwapy, type WidgetConfig } from "@/hooks/use-swapy";
 import { WidgetManager } from "@/components/WidgetManager";
-import type { LoginLogEntry } from "@/hooks/use-general-analytics";
+import type { LoginLogEntry } from "@/hooks/use-moodle-queries";
 
 const COLORS = [
   "hsl(172, 66%, 50%)",

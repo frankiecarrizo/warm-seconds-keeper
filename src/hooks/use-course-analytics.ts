@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { MoodleCourse, CourseOverviewData, searchCourses, getCourseOverviewData, streamCourseOverviewAnalysis, isTokenError } from "@/lib/moodle-api";
+import { flattenCourseDataForAI } from "@/lib/ai-data-flatten";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
 
@@ -80,9 +81,11 @@ export function useCourseAnalytics() {
     setError(null);
 
     try {
+      // Send flattened data to reduce tokens and latency
+      const flattenedData = flattenCourseDataForAI(selectedCourse.fullname, courseData);
       await streamCourseOverviewAnalysis({
         courseName: selectedCourse.fullname,
-        courseData,
+        courseData: flattenedData as any,
         onDelta: (text) => setAnalysis((prev) => prev + text),
         onDone: () => setAnalysisLoading(false),
         onError: (err) => {
