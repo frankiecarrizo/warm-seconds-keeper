@@ -21,11 +21,11 @@ export function TopAccessWidget({ data }: Props) {
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0 pb-4">
-        <div className="h-52">
+        <div className="h-44">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 5 }}>
-              <XAxis type="number" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
-              <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} className="fill-muted-foreground" />
+            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 15, bottom: 0, left: 0 }}>
+              <XAxis type="number" tick={{ fontSize: 10 }} className="fill-muted-foreground" />
+              <YAxis type="category" dataKey="name" width={180} tick={{ fontSize: 9 }} className="fill-muted-foreground" />
               <Tooltip
                 contentStyle={{ fontSize: 12, background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
                 formatter={(value: number) => [`${value} estudiantes`, "Ingresaron"]}
