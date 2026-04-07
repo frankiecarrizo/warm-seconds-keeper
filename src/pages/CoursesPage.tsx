@@ -41,7 +41,7 @@ const CoursesPage = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 max-w-6xl mx-auto">
       {/* Error banner */}
       <AnimatePresence>
         {error && (
