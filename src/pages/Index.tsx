@@ -8,6 +8,7 @@ import { UserCharts } from "@/components/UserCharts";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { CourseDetail } from "@/components/CourseDetail";
 import { useMoodleAnalytics } from "@/hooks/use-moodle-analytics";
+import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { MoodleCertificate } from "@/lib/moodle-api";
 import { exportToCSV, exportToPDF } from "@/lib/export-utils";
 import { motion, AnimatePresence } from "framer-motion";
