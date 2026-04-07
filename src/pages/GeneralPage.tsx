@@ -438,7 +438,7 @@ const GeneralPage = () => {
                 <p className="text-xs text-muted-foreground">Suspendidos</p>
               </CardContent>
             </Card>,
-            enrollmentLoading ? <StatSkeleton key="teachers-skel" /> : (
+            enrollmentLoading ? <StatSkeleton key="teachers-skel" index={4} /> : (
               <Card key="teachers" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <GraduationCap className="h-5 w-5 text-accent-foreground mx-auto mb-1" />
