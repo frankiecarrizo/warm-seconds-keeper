@@ -1,89 +1,92 @@
-import { useEffect, useMemo, useState, lazy, Suspense } from "react";
+import { useMemo, useState, lazy, Suspense, useCallback } from "react";
 import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet, Brain } from "lucide-react";
 import { exportGeneralToCSV, exportGeneralToPDF } from "@/lib/export-utils";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGeneralAnalytics } from "@/hooks/use-general-analytics";
-
+import { useGeneralBaseData, useEnrollmentData, useLoginLogs, useInvalidateGeneral } from "@/hooks/use-moodle-queries";
 import { motion, AnimatePresence } from "framer-motion";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { toast } from "sonner";
 
 const GeneralCharts = lazy(() => import("@/components/GeneralCharts").then(m => ({ default: m.GeneralCharts })));
 
-
-
 const GeneralPage = () => {
-  const {
-    isConnected,
-    data,
-    loading,
-    enrollmentLoading,
-    enrollmentProgress,
-    error,
-    setError,
-    fetchGeneralData,
-  } = useGeneralAnalytics();
-
-  const { connect, disconnect, configUrl } = useMoodleConnection();
+  const { isConnected, connect, disconnect, configUrl } = useMoodleConnection();
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
-  const [isFreshLoad, setIsFreshLoad] = useState(!data);
+  const [isFreshLoad, setIsFreshLoad] = useState(false);
 
-  // Build category map and tree data for chart
+  // ─── TanStack Query hooks ───
+  const baseQuery = useGeneralBaseData(isConnected);
+  const courseIds = useMemo(() => baseQuery.data?.courses.map(c => c.id) || [], [baseQuery.data?.courses]);
+  const enrollmentQuery = useEnrollmentData(courseIds, !!baseQuery.data);
+  const loginLogsQuery = useLoginLogs(!!baseQuery.data);
+
+  const invalidateAll = useInvalidateGeneral();
+
+  // Derived data
+  const siteInfo = baseQuery.data?.siteInfo;
+  const courses = baseQuery.data?.courses || [];
+  const categories = baseQuery.data?.categories || [];
+  const usersSummary = baseQuery.data?.usersSummary;
+  const enrollmentSummaries = enrollmentQuery.data || [];
+  const loginLogs = loginLogsQuery.data || [];
+
+  const enrollmentLoading = enrollmentQuery.isFetching;
+  const loading = baseQuery.isFetching;
+  const error = baseQuery.error?.message || enrollmentQuery.error?.message || null;
+
+  // Handle token errors
+  useMemo(() => {
+    const errMsg = baseQuery.error?.message || enrollmentQuery.error?.message;
+    if (errMsg?.startsWith("TOKEN_INVALID")) {
+      toast.error("Token inválido o expirado. Reconectá con un nuevo token.");
+      disconnect();
+    }
+  }, [baseQuery.error, enrollmentQuery.error]);
+
+  const dataReady = !enrollmentLoading && enrollmentSummaries.length > 0;
+
+  // Category map + tree
   const categoryMap = useMemo(() => {
-    if (!data?.categories) return new Map();
-    return new Map(data.categories.map(c => [c.id, c]));
-  }, [data?.categories]);
+    if (!categories.length) return new Map();
+    return new Map(categories.map(c => [c.id, c]));
+  }, [categories]);
 
   const categoryChartData = useMemo(() => {
-    if (!data?.courses || categoryMap.size === 0) return [];
+    if (!courses.length || categoryMap.size === 0) return [];
     const getTopLevelId = (catId: number): number => {
       const cat = categoryMap.get(catId);
       if (!cat || cat.parent === 0) return catId;
       return getTopLevelId(cat.parent);
     };
-
     const topLevelMap = new Map<number, { name: string; subcategories: Map<string, number>; total: number }>();
-
-    data.courses.forEach(course => {
+    courses.forEach(course => {
       const topId = getTopLevelId(course.categoryid);
       const topCat = categoryMap.get(topId);
       const topName = topCat?.name || "Sin categoría";
-      
-      if (!topLevelMap.has(topId)) {
-        topLevelMap.set(topId, { name: topName, subcategories: new Map(), total: 0 });
-      }
+      if (!topLevelMap.has(topId)) topLevelMap.set(topId, { name: topName, subcategories: new Map(), total: 0 });
       const entry = topLevelMap.get(topId)!;
       entry.total++;
-
       const subCat = categoryMap.get(course.categoryid);
       const subName = subCat && subCat.id !== topId ? subCat.name : topName;
       entry.subcategories.set(subName, (entry.subcategories.get(subName) || 0) + 1);
     });
-
     return Array.from(topLevelMap.values())
       .sort((a, b) => b.total - a.total)
       .map(entry => ({
         name: entry.name,
         cursos: entry.total,
-        subcategories: Array.from(entry.subcategories.entries())
-          .sort((a, b) => b[1] - a[1])
-          .map(([name, count]) => ({ name, cursos: count })),
+        subcategories: Array.from(entry.subcategories.entries()).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, cursos: count })),
       }));
-  }, [data?.courses, categoryMap]);
+  }, [courses, categoryMap]);
 
-  const enrollmentSummaries = data?.enrollmentSummaries || [];
-  const courses = data?.courses || [];
-  const usersSummary = data?.usersSummary;
-  const dataReady = !enrollmentLoading && enrollmentSummaries.length > 0;
-
-  // Aggregated stats — memoized
+  // Aggregated stats
   const stats = useMemo(() => {
     const totalStudents = enrollmentSummaries.reduce((s, e) => s + e.totalStudents, 0);
     const uniqueTeacherIds = new Set(enrollmentSummaries.flatMap((e: any) => e.teacherIds || []));
@@ -97,11 +100,10 @@ const GeneralPage = () => {
     return { totalStudents, totalTeachers, totalCompleted, totalChecked, totalNeverAccessed, completionRate, neverAccessedRate, totalAccessed };
   }, [enrollmentSummaries]);
 
-  // Chart data — only computed when enrollment is done
+  // Chart data
   const chartData = useMemo(() => {
     if (!dataReady) return null;
     const summaryMap = new Map(enrollmentSummaries.map((s) => [s.courseId, s]));
-
     const enrollmentChartData = courses
       .map((c) => {
         const s = summaryMap.get(c.id);
@@ -140,26 +142,25 @@ const GeneralPage = () => {
     return { enrollmentChartData, completionChartData, completionPieData, accessPieData, userStatusPieData, summaryMap };
   }, [dataReady, enrollmentSummaries, courses, usersSummary, stats]);
 
-  useEffect(() => {
-    if (isConnected && !data && !loading) {
-      fetchGeneralData();
-    }
-  }, [isConnected]);
-
   const formatDate = (ts: number) => {
     if (!ts) return "—";
     return new Date(ts * 1000).toLocaleDateString("es", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  const handleRefresh = useCallback(() => {
+    setIsFreshLoad(true);
+    invalidateAll();
+  }, [invalidateAll]);
+
   const handleAIAnalysis = async () => {
-    if (!data || !chartData) return;
+    if (!baseQuery.data || !chartData) return;
     setAiAnalysis("");
     setAiLoading(true);
     try {
       const generalData = {
-        siteName: data.siteInfo.sitename,
-        siteUrl: data.siteInfo.siteurl,
-        moodleVersion: data.siteInfo.release || data.siteInfo.version,
+        siteName: baseQuery.data.siteInfo.sitename,
+        siteUrl: baseQuery.data.siteInfo.siteurl,
+        moodleVersion: baseQuery.data.siteInfo.release || baseQuery.data.siteInfo.version,
         totalCourses: courses.length,
         totalUsers: usersSummary?.total || 0,
         activeUsers: usersSummary?.active || 0,
@@ -174,33 +175,25 @@ const GeneralPage = () => {
         topCoursesByEnrollment: chartData.enrollmentChartData,
         topCoursesByCompletion: chartData.completionChartData,
         categorySummary: categoryChartData,
-        loginLogsCount: data.loginLogs?.length || 0,
+        loginLogsCount: loginLogs.length,
       };
-
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-general`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
         body: JSON.stringify({ generalData }),
       });
-
       if (!resp.ok || !resp.body) {
         const errData = await resp.json().catch(() => ({}));
         throw new Error(errData.error || "Error al analizar");
       }
-
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let fullText = "";
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-
         let newlineIdx: number;
         while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
           let line = buffer.slice(0, newlineIdx);
@@ -212,10 +205,7 @@ const GeneralPage = () => {
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              fullText += content;
-              setAiAnalysis(fullText);
-            }
+            if (content) { fullText += content; setAiAnalysis(fullText); }
           } catch {}
         }
       }
@@ -258,7 +248,7 @@ const GeneralPage = () => {
     );
   }
 
-  if (loading && !data) {
+  if (baseQuery.isLoading && !baseQuery.data) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="text-center space-y-3">
@@ -269,17 +259,20 @@ const GeneralPage = () => {
     );
   }
 
-  if (!data) {
+  if (!baseQuery.data) {
     return (
       <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-8">
         <Card className="glass-card border-destructive/30">
           <CardContent className="p-6">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <div className="space-y-2">
+              <div className="space-y-2 flex-1">
                 <h1 className="text-base font-semibold text-foreground">No se pudieron cargar los datos generales</h1>
                 <p className="text-sm text-muted-foreground">{error || "Revisá el token y los permisos del usuario en Moodle."}</p>
               </div>
+              <Button variant="outline" size="sm" onClick={() => baseQuery.refetch()} className="shrink-0 gap-1.5">
+                <RefreshCw className="h-3.5 w-3.5" /> Reintentar
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -287,8 +280,17 @@ const GeneralPage = () => {
     );
   }
 
-  const { siteInfo } = data;
-  const progressPercent = enrollmentProgress.total > 0 ? Math.round((enrollmentProgress.completed / enrollmentProgress.total) * 100) : 0;
+  const progressPercent = enrollmentQuery.progress.total > 0 ? Math.round((enrollmentQuery.progress.completed / enrollmentQuery.progress.total) * 100) : 0;
+
+  // Build export data shape for backward compat
+  const exportData = {
+    siteInfo: baseQuery.data.siteInfo,
+    courses,
+    categories,
+    enrollmentSummaries,
+    usersSummary: usersSummary || null,
+    loginLogs,
+  };
 
   return (
     <div className="min-h-full bg-background">
@@ -300,7 +302,6 @@ const GeneralPage = () => {
               className="flex items-center gap-3 rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-destructive">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <p className="text-sm flex-1">{error}</p>
-              <Button variant="ghost" size="sm" onClick={() => setError(null)} className="text-destructive hover:text-destructive">✕</Button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -314,29 +315,26 @@ const GeneralPage = () => {
                   <GraduationCap className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">{siteInfo.sitename}</h1>
-                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{siteInfo.siteurl}</p>
+                  <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">{siteInfo!.sitename}</h1>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{siteInfo!.siteurl}</p>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    <Badge variant="secondary" className="text-xs">Moodle {siteInfo.release?.split(" ")[0] || siteInfo.version}</Badge>
+                    <Badge variant="secondary" className="text-xs">Moodle {siteInfo!.release?.split(" ")[0] || siteInfo!.version}</Badge>
                     <Badge variant="outline" className="text-xs">{courses.length} cursos</Badge>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <Button variant="outline" size="sm" onClick={() => { setIsFreshLoad(true); fetchGeneralData(); }} disabled={loading}>
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                     Actualizar
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => exportGeneralToCSV(data)} disabled={enrollmentLoading} title="Descargar CSV">
-                    <FileSpreadsheet className="h-4 w-4 mr-1" />
-                    CSV
+                  <Button variant="outline" size="sm" onClick={() => exportGeneralToCSV(exportData)} disabled={enrollmentLoading} title="Descargar CSV">
+                    <FileSpreadsheet className="h-4 w-4 mr-1" /> CSV
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => exportGeneralToPDF(data)} disabled={enrollmentLoading} title="Descargar PDF">
-                    <FileText className="h-4 w-4 mr-1" />
-                    PDF
+                  <Button variant="outline" size="sm" onClick={() => exportGeneralToPDF(exportData)} disabled={enrollmentLoading} title="Descargar PDF">
+                    <FileText className="h-4 w-4 mr-1" /> PDF
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleAIAnalysis} disabled={aiLoading || enrollmentLoading || !chartData} title="Analizar con IA">
-                    <Brain className={`h-4 w-4 mr-1 ${aiLoading ? "animate-pulse" : ""}`} />
-                    IA
+                    <Brain className={`h-4 w-4 mr-1 ${aiLoading ? "animate-pulse" : ""}`} /> IA
                   </Button>
                 </div>
               </div>
@@ -348,7 +346,7 @@ const GeneralPage = () => {
         {enrollmentLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            Cargando datos de inscripción... ({enrollmentProgress.completed}/{enrollmentProgress.total} lotes)
+            Cargando datos de inscripción... ({enrollmentQuery.progress.completed}/{enrollmentQuery.progress.total} lotes)
             <Progress value={progressPercent} className="flex-1 max-w-xs h-2" />
           </motion.div>
         )}
@@ -463,7 +461,7 @@ const GeneralPage = () => {
               summaryMap={chartData.summaryMap}
               formatDate={formatDate}
               isFreshLoad={isFreshLoad}
-              loginLogs={data.loginLogs || []}
+              loginLogs={loginLogs}
             />
           </Suspense>
         ) : null}

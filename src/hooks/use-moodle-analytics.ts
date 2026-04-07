@@ -1,5 +1,7 @@
 import { useState, useCallback } from "react";
-import { MoodleConfig, MoodleUser, UserFullData, searchUsers, getUserFullData, streamAnalysis, isTokenError } from "@/lib/moodle-api";
+import { MoodleConfig, MoodleUser, UserFullData, searchUsers, getUserFullData, isTokenError } from "@/lib/moodle-api";
+import { streamAnalysis } from "@/lib/moodle-api";
+import { flattenUserDataForAI } from "@/lib/ai-data-flatten";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
 
