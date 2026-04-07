@@ -793,6 +793,11 @@ serve(async (req) => {
           students: studentData,
           allStudentsBasic,
           quizzes,
+          teachers: teachers.map((t: any) => ({
+            id: t.id,
+            fullname: t.fullname,
+            roles: (t.roles || []).map((r: any) => r.shortname),
+          })),
         };
         break;
       }

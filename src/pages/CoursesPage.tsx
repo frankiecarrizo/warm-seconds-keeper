@@ -248,6 +248,7 @@ const CoursesPage = () => {
                   courseName={selectedCourse.fullname}
                   config={cfg}
                   activityCompletionData={activityCompletionData}
+                  teachers={courseData.teachers}
                 />
               ) : null;
             })()}

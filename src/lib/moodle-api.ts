@@ -87,6 +87,12 @@ export interface StudentBasicData {
   completed: boolean;
 }
 
+export interface CourseTeacher {
+  id: number;
+  fullname: string;
+  roles: string[];
+}
+
 export interface CourseOverviewData {
   totalEnrolled: number;
   totalStudents: number;
@@ -95,6 +101,7 @@ export interface CourseOverviewData {
   students: CourseStudentData[];
   allStudentsBasic: StudentBasicData[];
   quizzes: { id: number; name: string }[];
+  teachers?: CourseTeacher[];
 }
 
 const TOKEN_ERROR_PATTERNS = [

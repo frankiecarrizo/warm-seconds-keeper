@@ -3,16 +3,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Send, Users, Loader2, X, MessageSquare, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, Users, Loader2, X, MessageSquare, ClipboardList, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { MoodleConfig, ActivityCompletionReport as ACReport } from "@/lib/moodle-api";
+import { MoodleConfig, ActivityCompletionReport as ACReport, CourseTeacher } from "@/lib/moodle-api";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type StudentFilter = "all" | "never_accessed" | "not_completed" | "completed" | `activity_${number}`;
 
 const NAMES_PER_ROW = 6;
 const VISIBLE_ROWS = 2;
+
+// Plantillas predefinidas
+const MESSAGE_TEMPLATES = [
+  {
+    label: "Bienvenida",
+    text: "Hola {nombre}, te damos la bienvenida al curso {curso}. ¡Esperamos que aproveches al máximo esta experiencia!",
+  },
+  {
+    label: "Recordatorio de actividades",
+    text: "Hola {nombre}, te recordamos que tenés {pendientes} actividad(es) pendiente(s) de un total de {total_actividades} en el curso {curso}. ¡No te quedes atrás!",
+  },
+  {
+    label: "Incentivo de avance",
+    text: "Hola {nombre}, vas muy bien en {curso}. Ya completaste {completadas} de {total_actividades} actividades. ¡Seguí así!",
+  },
+  {
+    label: "Aviso de inactividad",
+    text: "Hola {nombre}, notamos que aún no ingresaste al curso {curso}. Te invitamos a que comiences cuanto antes para no perderte el contenido.",
+  },
+  {
+    label: "Aviso general",
+    text: "Hola {nombre}, te informamos que hay novedades importantes en el curso {curso}. Por favor, revisá las últimas actualizaciones.",
+  },
+];
 
 interface CourseMessagingProps {
   allStudentsBasic: Array<{
@@ -25,9 +50,10 @@ interface CourseMessagingProps {
   courseName: string;
   config: MoodleConfig;
   activityCompletionData?: ACReport | null;
+  teachers?: CourseTeacher[];
 }
 
-export function CourseMessaging({ allStudentsBasic, courseName, config, activityCompletionData }: CourseMessagingProps) {
+export function CourseMessaging({ allStudentsBasic, courseName, config, activityCompletionData, teachers = [] }: CourseMessagingProps) {
   const [filter, setFilter] = useState<StudentFilter>("all");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -35,6 +61,7 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
   const [excludedIds, setExcludedIds] = useState<Set<number>>(new Set());
   const [isOpen, setIsOpen] = useState(false);
   const [showActivityFilters, setShowActivityFilters] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
 
   // Build a map: studentId -> number of completed activities
   const completionCountMap = useMemo(() => {
@@ -75,7 +102,7 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
     completed: allStudentsBasic.filter((u) => u.completed).length,
   }), [allStudentsBasic]);
 
-  // Count students per activity level (0 completed, 1 completed, ..., N completed)
+  // Count students per activity level
   const activityCounts = useMemo(() => {
     if (!activityCompletionData || totalActivities === 0) return [];
     const result: { level: number; label: string; count: number }[] = [];
@@ -98,20 +125,67 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
     completed: "Finalizados",
   };
 
+  const selectedTeacher = selectedTeacherId && selectedTeacherId !== "none" ? teachers.find((t) => String(t.id) === selectedTeacherId) : undefined;
+
+  // Replace template variables per-user
+  const resolveTemplate = (template: string, user: { id: number; fullname: string }) => {
+    const completed = completionCountMap.get(user.id) ?? 0;
+    const pendientes = totalActivities - completed;
+    return template
+      .replace(/\{nombre\}/g, user.fullname)
+      .replace(/\{curso\}/g, courseName)
+      .replace(/\{completadas\}/g, String(completed))
+      .replace(/\{pendientes\}/g, String(pendientes))
+      .replace(/\{total_actividades\}/g, String(totalActivities));
+  };
+
   const handleSend = async () => {
     if (!message.trim() || !filteredUsers.length) return;
     setSending(true);
+
+    const hasVariables = /\{(nombre|completadas|pendientes)\}/.test(message);
+    const signature = selectedTeacher ? `\n\n— ${selectedTeacher.fullname}` : "";
+
     try {
-      const { data, error } = await supabase.functions.invoke("moodle-proxy", {
-        body: { ...config, action: "send_message", params: { userIds: filteredUsers.map((u) => u.id), text: message } },
-        headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-      if (data?.hasErrors && data.errors?.length) {
-        toast.warning(`Enviado con ${data.errors.length} errores: ${data.errors[0]}`);
+      if (hasVariables) {
+        // Send individually with personalized text
+        const batchSize = 20;
+        let sentCount = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < filteredUsers.length; i += batchSize) {
+          const batch = filteredUsers.slice(i, i + batchSize);
+          for (const user of batch) {
+            const personalizedText = resolveTemplate(message, user) + signature;
+            const { data, error } = await supabase.functions.invoke("moodle-proxy", {
+              body: { ...config, action: "send_message", params: { userIds: [user.id], text: personalizedText } },
+              headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+            });
+            if (error) errors.push(`${user.fullname}: ${error.message}`);
+            else if (data?.hasErrors) errors.push(`${user.fullname}: ${data.errors?.[0]}`);
+            else sentCount++;
+          }
+        }
+
+        if (errors.length) {
+          toast.warning(`Enviado a ${sentCount}, ${errors.length} errores.`);
+        } else {
+          toast.success(`Mensaje personalizado enviado a ${sentCount} estudiantes.`);
+        }
       } else {
-        toast.success(`Mensaje enviado a ${filteredUsers.length} estudiantes.`);
+        // Bulk send with same text
+        const finalText = message + signature;
+        const { data, error } = await supabase.functions.invoke("moodle-proxy", {
+          body: { ...config, action: "send_message", params: { userIds: filteredUsers.map((u) => u.id), text: finalText } },
+          headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        });
+        if (error) throw new Error(error.message);
+        if (data?.error) throw new Error(data.error);
+        if (data?.hasErrors && data.errors?.length) {
+          toast.warning(`Enviado con ${data.errors.length} errores: ${data.errors[0]}`);
+        } else {
+          toast.success(`Mensaje enviado a ${filteredUsers.length} estudiantes.`);
+        }
       }
       setMessage("");
     } catch (e: any) {
@@ -119,6 +193,10 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
     } finally {
       setSending(false);
     }
+  };
+
+  const applyTemplate = (template: string) => {
+    setMessage(template);
   };
 
   if (!isOpen) {
@@ -148,6 +226,47 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-3">
+        {/* Teacher selector (signature) */}
+        {teachers.length > 0 && (
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+              <SelectTrigger className="h-8 text-xs flex-1">
+                <SelectValue placeholder="Firmar como... (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin firma</SelectItem>
+                {teachers.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.fullname} ({t.roles.join(", ")})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Message templates */}
+        <div className="space-y-1.5">
+          <p className="text-xs text-muted-foreground font-medium">Plantillas predefinidas:</p>
+          <div className="flex gap-1.5 flex-wrap">
+            {MESSAGE_TEMPLATES.map((t, i) => (
+              <Button
+                key={i}
+                variant="outline"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => applyTemplate(t.text)}
+              >
+                {t.label}
+              </Button>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Variables: <code className="bg-muted px-1 rounded">{"{nombre}"}</code> <code className="bg-muted px-1 rounded">{"{curso}"}</code> <code className="bg-muted px-1 rounded">{"{completadas}"}</code> <code className="bg-muted px-1 rounded">{"{pendientes}"}</code> <code className="bg-muted px-1 rounded">{"{total_actividades}"}</code>
+          </p>
+        </div>
+
         {/* Filters */}
         <div className="flex gap-1.5 flex-wrap items-center">
           {(Object.keys(filterLabels) as StudentFilter[]).map((key) => (
@@ -238,11 +357,22 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
 
         {/* Message */}
         <Textarea
-          placeholder="Escribe tu mensaje aquí..."
+          placeholder="Escribe tu mensaje aquí o seleccioná una plantilla..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          rows={3}
+          rows={4}
         />
+
+        {/* Preview */}
+        {message && filteredUsers.length > 0 && (
+          <div className="bg-muted/50 rounded-md p-3 text-xs space-y-1">
+            <p className="font-medium text-muted-foreground">Vista previa (primer destinatario):</p>
+            <p className="whitespace-pre-wrap text-foreground">
+              {resolveTemplate(message, filteredUsers[0])}
+              {selectedTeacher ? `\n\n— ${selectedTeacher.fullname}` : ""}
+            </p>
+          </div>
+        )}
 
         <Button onClick={handleSend} disabled={sending || !message.trim() || !filteredUsers.length} className="gap-2">
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
