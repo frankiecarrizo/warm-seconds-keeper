@@ -129,7 +129,7 @@ const CoursesPage = () => {
 
             {/* Quick stats */}
             {courseData && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
                 {/* Row 1 */}
                 <Card className="glass-card">
                   <CardContent className="p-4 text-center">

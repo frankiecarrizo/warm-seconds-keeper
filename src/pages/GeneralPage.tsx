@@ -395,7 +395,7 @@ const GeneralPage = () => {
 
         {/* Stat cards - Row 2 */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
           {enrollmentLoading ? (
             <>{[1,2,3,4,5].map(i => <StatSkeleton key={i} />)}</>
           ) : (
