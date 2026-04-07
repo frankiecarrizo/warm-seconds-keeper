@@ -291,8 +291,18 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
                 </Button>
               </div>
             )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => { e.stopPropagation(); setCollapsed(c => !c); }}
+              >
+                {collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </CardHeader>
+        {!collapsed && (
         <CardContent className="p-3">
           {!analysis && loading ? (
             <div className="flex items-center gap-3 text-muted-foreground py-10 justify-center">
