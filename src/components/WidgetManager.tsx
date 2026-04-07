@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { WidgetConfig } from "@/hooks/use-swapy";
 import { LayoutGrid, Eye, EyeOff, GripVertical, Layers } from "lucide-react";
@@ -7,61 +7,41 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface WidgetManagerProps {
   widgets: WidgetConfig[];
   onToggle: (id: string) => void;
   onReset: () => void;
   onShowAll?: () => void;
+  onHideAll?: () => void;
 }
 
-export function WidgetManager({ widgets, onToggle, onReset, onShowAll }: WidgetManagerProps) {
+export function WidgetManager({ widgets, onToggle, onReset, onShowAll, onHideAll }: WidgetManagerProps) {
   const [open, setOpen] = useState(false);
   const visibleCount = widgets.filter((w) => w.visible).length;
-  const allHidden = visibleCount === 0;
+  const allVisible = visibleCount === widgets.length;
 
-  // Show tooltip hint when all widgets are hidden (first time)
-  const [showHint, setShowHint] = useState(false);
-  useEffect(() => {
-    if (allHidden && !open) {
-      const timer = setTimeout(() => setShowHint(true), 800);
-      return () => clearTimeout(timer);
+  const handleToggleAll = () => {
+    if (allVisible) {
+      onHideAll?.();
+    } else {
+      (onShowAll || onReset)();
     }
-    setShowHint(false);
-  }, [allHidden, open]);
+  };
 
   return (
-    <Popover open={open} onOpenChange={(v) => { setOpen(v); setShowHint(false); }}>
-      <TooltipProvider delayDuration={0}>
-        <Tooltip open={showHint}>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={`gap-2 h-8 ${allHidden ? "animate-pulse border-primary text-primary" : ""}`}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Agregar widget</span>
-                {visibleCount > 0 && (
-                  <span className="bg-primary text-primary-foreground text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
-                    {visibleCount}
-                  </span>
-                )}
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="left" className="text-xs max-w-[200px]">
-            Hacé clic para agregar gráficos y widgets al dashboard
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2 h-8">
+          <LayoutGrid className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Widgets</span>
+          {visibleCount > 0 && (
+            <span className="bg-primary text-primary-foreground text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+              {visibleCount}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
       <PopoverContent className="w-64 p-3" align="end">
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-2">
@@ -70,10 +50,10 @@ export function WidgetManager({ widgets, onToggle, onReset, onShowAll }: WidgetM
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-xs text-muted-foreground"
-              onClick={onShowAll || onReset}
+              onClick={handleToggleAll}
             >
               <Layers className="h-3 w-3 mr-1" />
-              Mostrar todos
+              {allVisible ? "Ocultar todos" : "Mostrar todos"}
             </Button>
           </div>
           {widgets.map((w) => (

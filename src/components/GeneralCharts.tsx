@@ -32,15 +32,15 @@ interface GeneralChartsProps {
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: false },
-  { id: "completion-donut", label: "Finalización Global", visible: false },
-  { id: "user-status", label: "Estado de Usuarios", visible: false },
-  { id: "access-donut", label: "Acceso a la Plataforma", visible: false },
-  { id: "logins-by-month", label: "Ingresos por Mes", visible: false },
-  { id: "heatmap", label: "Mapa de Calor", visible: false },
-  { id: "top-completions", label: "Top 5 — Finalizaciones", visible: false },
-  { id: "categories", label: "Cursos por Categoría", visible: false },
-  { id: "all-courses", label: "Todos los Cursos", visible: false },
+  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: true },
+  { id: "completion-donut", label: "Finalización Global", visible: true },
+  { id: "user-status", label: "Estado de Usuarios", visible: true },
+  { id: "access-donut", label: "Acceso a la Plataforma", visible: true },
+  { id: "logins-by-month", label: "Ingresos por Mes", visible: true },
+  { id: "heatmap", label: "Mapa de Calor", visible: true },
+  { id: "top-completions", label: "Top 5 — Finalizaciones", visible: true },
+  { id: "categories", label: "Cursos por Categoría", visible: true },
+  { id: "all-courses", label: "Todos los Cursos", visible: true },
 ];
 
 const FULL_WIDTH_IDS = new Set(["top-completions", "categories", "all-courses", "logins-by-month", "heatmap"]);
