@@ -20,7 +20,6 @@ import {
 
 const Index = () => {
   const {
-    config,
     isConnected,
     connect,
     disconnect,
@@ -56,7 +55,7 @@ const Index = () => {
 
     try {
       const { callProxy } = await import("@/lib/moodle-api");
-      const res = await callProxy(config, "download_certificate", {
+      const res = await callProxy("download_certificate", {
         url: cert.downloadUrl,
         type: cert.type,
         certificateId: cert.id,
@@ -322,7 +321,7 @@ const Index = () => {
                   </h3>
                   <div className="space-y-2">
                     {userData.courses.map((course) => (
-                      <CourseDetail key={course.id} course={course} config={config} />
+                    <CourseDetail key={course.id} course={course} />
                     ))}
                   </div>
                 </motion.div>

@@ -9,13 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { User, BookOpen, Search, Loader2, Download, Award, FileDown } from "lucide-react";
-import { searchUsers, searchCourses, getUserFullData, MoodleUser, MoodleConfig, MoodleCertificate, callProxy } from "@/lib/moodle-api";
+import { searchUsers, searchCourses, getUserFullData, MoodleUser, MoodleCertificate, callProxy } from "@/lib/moodle-api";
 import JSZip from "jszip";
 
-const getConfig = (): MoodleConfig | null => {
-  const saved = localStorage.getItem("moodle-config");
-  return saved ? JSON.parse(saved) : null;
-};
 
 interface CertificateDisplay {
   id: number;
@@ -63,9 +59,9 @@ function CertificateCard({ cert, onDownload, downloading }: { cert: CertificateD
   );
 }
 
-async function downloadSingleCert(config: MoodleConfig, cert: CertificateDisplay): Promise<{ data: Uint8Array; filename: string } | null> {
+async function downloadSingleCert(cert: CertificateDisplay): Promise<{ data: Uint8Array; filename: string } | null> {
   try {
-    const res = await callProxy(config, "download_certificate", {
+    const res = await callProxy("download_certificate", {
       url: cert.downloadUrl,
       type: cert.type,
       certificateId: cert.id,
@@ -84,13 +80,14 @@ async function downloadSingleCert(config: MoodleConfig, cert: CertificateDisplay
   }
 }
 
-async function downloadAllAsZip(config: MoodleConfig, certs: CertificateDisplay[], zipName: string, setProgress: (n: number) => void) {
+async function downloadAllAsZip(certs: CertificateDisplay[], zipName: string, setProgress: (n: number) => void) {
   const zip = new JSZip();
   let downloaded = 0;
   let errors = 0;
 
   for (const cert of certs) {
     const result = await downloadSingleCert(config, cert);
+    const result = await downloadSingleCert(cert);
     if (result) {
       zip.file(result.filename, result.data);
     } else {
