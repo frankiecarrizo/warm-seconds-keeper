@@ -22,6 +22,7 @@ const GeneralPage = () => {
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [isFreshLoad, setIsFreshLoad] = useState(false);
+  const isMobile = useIsMobile();
 
   // ─── TanStack Query hooks ───
   const baseQuery = useGeneralBaseData(isConnected);
