@@ -46,7 +46,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 const FULL_WIDTH_IDS = new Set(["top-completions", "categories", "all-courses", "logins-by-month", "heatmap"]);
 
 export function GeneralCharts(props: GeneralChartsProps) {
-  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll } = useSwapy({
+  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
     storageKey: "general-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
     forceHideAll: props.isFreshLoad,
