@@ -879,6 +879,16 @@ serve(async (req) => {
       }
 
 
+      const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+
+      const normalizeText = (value: string) =>
+        stripHtml(value)
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
+
       // ── Activity completion report (student x activity matrix) ──
       case "get_activity_completion_report": {
         const courseId = params?.courseId;
@@ -906,6 +916,10 @@ serve(async (req) => {
           }
         }
 
+        const activityByNormalizedName = new Map(
+          activities.map((activity) => [normalizeText(activity.name), activity.cmid])
+        );
+
         // Get completion status for each student in batches
         const rows: any[] = [];
         const batchSize = 10;
@@ -930,12 +944,41 @@ serve(async (req) => {
                   completions: statusMap,
                 };
               } catch {
+                try {
+                  const courseCompletion = await callMoodle("core_completion_get_course_completion_status", {
+                    courseid: String(courseId),
+                    userid: String(s.id),
+                  });
+
+                  const completionEntries = courseCompletion?.completionstatus?.completions || [];
+                  const statusMap: Record<number, number> = Object.fromEntries(
+                    activities.map((activity) => [activity.cmid, 0])
+                  );
+
+                  for (const entry of completionEntries) {
+                    const criteriaName = entry?.details?.criteria;
+                    if (typeof criteriaName !== "string") continue;
+
+                    const matchedCmid = activityByNormalizedName.get(normalizeText(criteriaName));
+                    if (!matchedCmid) continue;
+
+                    statusMap[matchedCmid] = entry.complete ? 1 : 0;
+                  }
+
+                  return {
+                    id: s.id,
+                    fullname: s.fullname,
+                    email: s.email || "",
+                    completions: statusMap,
+                  };
+                } catch {
                 return {
                   id: s.id,
                   fullname: s.fullname,
                   email: s.email || "",
                   completions: {},
                 };
+                }
               }
             })
           );
