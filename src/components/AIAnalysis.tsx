@@ -285,7 +285,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
                   variant="outline"
                   size="icon"
                   className="h-7 w-7"
-                  onClick={() => emblaApi?.scrollNext()}
+                  onClick={(e) => { e.stopPropagation(); emblaApi?.scrollNext(); }}
                   disabled={!canScrollNext}
                 >
                   <ChevronRight className="h-4 w-4" />
