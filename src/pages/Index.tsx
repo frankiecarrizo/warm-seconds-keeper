@@ -37,6 +37,7 @@ const Index = () => {
     error,
     setError,
   } = useMoodleAnalytics();
+  const { configUrl } = useMoodleConnection();
 
   const formatDate = (ts: number) => {
     if (!ts) return "N/A";
