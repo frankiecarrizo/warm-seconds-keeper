@@ -1017,11 +1017,17 @@ serve(async (req) => {
 
 
       // ── Activity completion report (student x activity matrix) ──
-      case "get_activity_completion_report": {
+case "get_activity_completion_report": {
         const courseId = params?.courseId;
         if (!courseId) throw { message: "Missing courseId", status: 400 };
 
-        // Get enrolled students
+        type ReportActivity = {
+          cmid: number;
+          name: string;
+          modname: string;
+          quizid?: number;
+        };
+
         const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
           courseid: String(courseId),
         });
@@ -1030,35 +1036,110 @@ serve(async (req) => {
           return !roles.includes("editingteacher") && !roles.includes("teacher") && !roles.includes("manager");
         });
 
-        // Get activities list from course contents
-        let activities: { cmid: number; name: string; modname: string }[] = [];
+        let activities: ReportActivity[] = [];
+        const moduleMap = new Map<number, ReportActivity>();
+        const quizByQuizId = new Map<number, ReportActivity>();
+        const seenActivityIds = new Set<number>();
+
+        const synthesizeQuizCmid = (quizId: number) => 900000000 + quizId;
+
+        const pushActivity = (activity: ReportActivity | null | undefined) => {
+          if (!activity || seenActivityIds.has(activity.cmid)) return;
+          seenActivityIds.add(activity.cmid);
+          activities.push(activity);
+          if (activity.modname === "quiz" && activity.quizid) {
+            quizByQuizId.set(activity.quizid, activity);
+          }
+        };
+
+        const getQuizActivities = () => activities.filter((activity) => activity.modname === "quiz" && activity.quizid);
+
+        const formatRow = (student: any, completions: Record<number, number>) => ({
+          id: student.id,
+          fullname: student.fullname,
+          email: student.email || "",
+          completions,
+        });
+
+        const buildQuizStatusMapFromGrades = async (userId: number) => {
+          const quizActivities = getQuizActivities();
+          if (quizActivities.length === 0) return null;
+
+          try {
+            const gradeReport = await callMoodle("gradereport_user_get_grade_items", {
+              courseid: String(courseId),
+              userid: String(userId),
+            });
+            const gradeItems = gradeReport?.usergrades?.[0]?.gradeitems || [];
+            const statusMap: Record<number, number> = Object.fromEntries(
+              quizActivities.map((activity) => [activity.cmid, 0])
+            );
+
+            for (const item of gradeItems) {
+              const isQuiz = item.itemmodule === "quiz" || (item.itemtype === "mod" && item.itemmodule === "quiz");
+              const quizId = Number(item.iteminstance || 0);
+              const quizActivity = quizByQuizId.get(quizId);
+              if (!isQuiz || !quizActivity) continue;
+
+              const hasGrade =
+                item.graderaw !== null && item.graderaw !== undefined ||
+                (typeof item.gradeformatted === "string" && item.gradeformatted.trim() !== "" && item.gradeformatted.trim() !== "-");
+
+              statusMap[quizActivity.cmid] = hasGrade ? 1 : 0;
+            }
+
+            return statusMap;
+          } catch {
+            return null;
+          }
+        };
+
+        const buildQuizStatusMapFromAttempts = async (userId: number) => {
+          const quizActivities = getQuizActivities();
+          const statusMap: Record<number, number> = Object.fromEntries(
+            quizActivities.map((activity) => [activity.cmid, 0])
+          );
+
+          for (let i = 0; i < quizActivities.length; i += 5) {
+            const quizBatch = quizActivities.slice(i, i + 5);
+            const batchResults = await Promise.all(
+              quizBatch.map(async (activity) => {
+                try {
+                  const attemptsResponse = await callMoodle("mod_quiz_get_user_attempts", {
+                    quizid: String(activity.quizid),
+                    userid: String(userId),
+                    status: "all",
+                  });
+                  return { activity, attempts: attemptsResponse?.attempts || [] };
+                } catch {
+                  return { activity, attempts: [] };
+                }
+              })
+            );
+
+            for (const { activity, attempts } of batchResults) {
+              const hasFinishedAttempt = attempts.some((attempt: any) => attempt?.state === "finished" || Number(attempt?.timefinish || 0) > 0);
+              statusMap[activity.cmid] = hasFinishedAttempt ? 1 : 0;
+            }
+          }
+
+          return statusMap;
+        };
+
         const contents = await callMoodle("core_course_get_contents", {
           courseid: String(courseId),
         }).catch(() => []);
 
-        const moduleMap = new Map<number, { cmid: number; name: string; modname: string }>();
-        const quizActivities: { cmid: number; name: string; modname: string }[] = [];
-        const seenActivityIds = new Set<number>();
-
-        const pushActivity = (activity: { cmid: number; name: string; modname: string } | null | undefined) => {
-          if (!activity || seenActivityIds.has(activity.cmid)) return;
-          seenActivityIds.add(activity.cmid);
-          activities.push(activity);
-        };
-
         for (const section of contents) {
           for (const mod of section.modules || []) {
-            const activity = {
-              cmid: mod.id,
+            const activity: ReportActivity = {
+              cmid: Number(mod.id),
               name: mod.name || `Actividad ${mod.id}`,
               modname: mod.modname || "unknown",
+              quizid: mod.modname === "quiz" ? Number(mod.instance || 0) || undefined : undefined,
             };
 
-            moduleMap.set(mod.id, activity);
-
-            if (activity.modname === "quiz") {
-              quizActivities.push(activity);
-            }
+            moduleMap.set(activity.cmid, activity);
 
             const hasTrackedCompletion =
               (typeof mod.completion === "number" && mod.completion > 0) ||
@@ -1073,14 +1154,60 @@ serve(async (req) => {
           }
         }
 
-        // Moodle 4.0 fallback: if completion flags are missing, at least show quizzes.
-        if (activities.length === 0 && quizActivities.length > 0) {
-          for (const quizActivity of quizActivities) {
-            pushActivity(quizActivity);
+        const loadQuizFallbackActivities = async () => {
+          try {
+            const quizResponse = await callMoodle("mod_quiz_get_quizzes_by_courses", {
+              "courseids[0]": String(courseId),
+            });
+            const quizzes = quizResponse?.quizzes || quizResponse || [];
+
+            for (const quiz of quizzes) {
+              const quizId = Number(quiz.id || 0);
+              if (!quizId) continue;
+
+              const matchedModule = Array.from(moduleMap.values()).find((activity) =>
+                activity.modname === "quiz" && (
+                  activity.quizid === quizId || normalizeText(activity.name) === normalizeText(quiz.name || "")
+                )
+              );
+
+              pushActivity({
+                cmid: Number(quiz.coursemodule || quiz.coursemoduleid || matchedModule?.cmid || synthesizeQuizCmid(quizId)),
+                name: quiz.name || matchedModule?.name || `Cuestionario ${quizId}`,
+                modname: "quiz",
+                quizid: quizId,
+              });
+            }
+          } catch {}
+
+          if (getQuizActivities().length === 0 && students.length > 0) {
+            try {
+              const gradeReport = await callMoodle("gradereport_user_get_grade_items", {
+                courseid: String(courseId),
+                userid: String(students[0].id),
+              });
+              const gradeItems = gradeReport?.usergrades?.[0]?.gradeitems || [];
+
+              for (const item of gradeItems) {
+                const isQuiz = item.itemmodule === "quiz" || (item.itemtype === "mod" && item.itemmodule === "quiz");
+                const quizId = Number(item.iteminstance || 0);
+                if (!isQuiz || !quizId) continue;
+
+                pushActivity({
+                  cmid: synthesizeQuizCmid(quizId),
+                  name: stripHtml(item.itemname || `Cuestionario ${quizId}`),
+                  modname: "quiz",
+                  quizid: quizId,
+                });
+              }
+            } catch {}
           }
+        };
+
+        if (activities.length === 0 || contents.length === 0) {
+          await loadQuizFallbackActivities();
         }
 
-        // Extra fallback: infer activities from the first student's completion data.
         if (activities.length === 0 && students.length > 0) {
           try {
             const probe = await callMoodle("core_completion_get_activities_completion_status", {
@@ -1090,9 +1217,9 @@ serve(async (req) => {
             const statuses = probe.statuses || [];
             for (const st of statuses) {
               pushActivity(
-                moduleMap.get(st.cmid) || {
-                  cmid: st.cmid,
-                  name: `Actividad ${st.cmid}`,
+                moduleMap.get(Number(st.cmid)) || {
+                  cmid: Number(st.cmid),
+                  name: st.name || `Actividad ${st.cmid}`,
                   modname: st.modname || "unknown",
                 }
               );
@@ -1119,85 +1246,84 @@ serve(async (req) => {
           }
         }
 
-        // If there are too many tracked items, keep quizzes only so the table stays usable.
+        const quizActivities = getQuizActivities();
         if (activities.length > 20 && quizActivities.length > 0) {
-          const quizIds = new Set(quizActivities.map((activity) => activity.cmid));
-          const filteredQuizActivities = activities.filter((activity) => quizIds.has(activity.cmid));
-          if (filteredQuizActivities.length > 0) {
-            activities = filteredQuizActivities;
-          }
+          activities = [...quizActivities];
         }
 
         const activityByNormalizedName = new Map(
           activities.map((activity) => [normalizeText(activity.name), activity.cmid])
         );
 
-        // Get completion status for each student in batches
         const rows: any[] = [];
         const batchSize = 10;
         for (let i = 0; i < students.length; i += batchSize) {
           const batch = students.slice(i, i + batchSize);
           const results = await Promise.all(
-            batch.map(async (s: any) => {
+            batch.map(async (student: any) => {
               try {
                 const actResult = await callMoodle("core_completion_get_activities_completion_status", {
                   courseid: String(courseId),
-                  userid: String(s.id),
+                  userid: String(student.id),
                 });
                 const statuses = actResult.statuses || [];
                 const statusMap: Record<number, number> = {};
                 for (const st of statuses) {
-                  statusMap[st.cmid] = st.state; // 0=incomplete, 1=complete, 2=complete-pass, 3=complete-fail
+                  statusMap[Number(st.cmid)] = st.state;
                 }
-                return {
-                  id: s.id,
-                  fullname: s.fullname,
-                  email: s.email || "",
-                  completions: statusMap,
-                };
-              } catch {
-                try {
-                  const courseCompletion = await callMoodle("core_completion_get_course_completion_status", {
-                    courseid: String(courseId),
-                    userid: String(s.id),
-                  });
-
-                  const completionEntries = courseCompletion?.completionstatus?.completions || [];
-                  const statusMap: Record<number, number> = Object.fromEntries(
-                    activities.map((activity) => [activity.cmid, 0])
-                  );
-
-                  for (const entry of completionEntries) {
-                    const criteriaName = entry?.details?.criteria;
-                    if (typeof criteriaName !== "string") continue;
-
-                    const matchedCmid = activityByNormalizedName.get(normalizeText(criteriaName));
-                    if (!matchedCmid) continue;
-
-                    statusMap[matchedCmid] = entry.complete ? 1 : 0;
-                  }
-
-                  return {
-                    id: s.id,
-                    fullname: s.fullname,
-                    email: s.email || "",
-                    completions: statusMap,
-                  };
-                } catch {
-                return {
-                  id: s.id,
-                  fullname: s.fullname,
-                  email: s.email || "",
-                  completions: {},
-                };
+                if (Object.keys(statusMap).length > 0) {
+                  return formatRow(student, statusMap);
                 }
+              } catch {}
+
+              try {
+                const courseCompletion = await callMoodle("core_completion_get_course_completion_status", {
+                  courseid: String(courseId),
+                  userid: String(student.id),
+                });
+
+                const completionEntries = courseCompletion?.completionstatus?.completions || [];
+                const statusMap: Record<number, number> = Object.fromEntries(
+                  activities.map((activity) => [activity.cmid, 0])
+                );
+                let matchedEntries = 0;
+
+                for (const entry of completionEntries) {
+                  const criteriaName = entry?.details?.criteria;
+                  if (typeof criteriaName !== "string") continue;
+
+                  const matchedCmid = activityByNormalizedName.get(normalizeText(criteriaName));
+                  if (!matchedCmid) continue;
+
+                  statusMap[matchedCmid] = entry.complete ? 1 : 0;
+                  matchedEntries += 1;
+                }
+
+                if (matchedEntries > 0) {
+                  return formatRow(student, statusMap);
+                }
+              } catch {}
+
+              if (quizActivities.length > 0) {
+                const gradeBasedMap = await buildQuizStatusMapFromGrades(student.id);
+                if (gradeBasedMap) {
+                  return formatRow(student, gradeBasedMap);
+                }
+
+                const attemptBasedMap = await buildQuizStatusMapFromAttempts(student.id);
+                return formatRow(student, attemptBasedMap);
               }
+
+              return formatRow(student, {});
             })
           );
           rows.push(...results);
         }
 
-        result = { activities, students: rows };
+        result = {
+          activities: activities.map(({ cmid, name, modname }) => ({ cmid, name, modname })),
+          students: rows,
+        };
         break;
       }
 
