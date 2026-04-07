@@ -878,8 +878,6 @@ serve(async (req) => {
         break;
       }
 
-      case "download_certificate": {
-      }
 
       // ── Get all issued certificates for a course ──────────────
       case "get_course_certificates": {
