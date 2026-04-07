@@ -125,7 +125,7 @@ serve(async (req) => {
     let moodleUrl: string;
     let moodleToken: string;
     try {
-      const config = await decryptConfig(decodeURIComponent(sessionCookie));
+      const config = await decryptConfig(sessionBlob);
       moodleUrl = config.moodleUrl;
       moodleToken = config.moodleToken;
     } catch {
