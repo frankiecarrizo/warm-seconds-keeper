@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoodleCourseData, MoodleConfig, getQuizAttemptReview, streamCourseAnalysis } from "@/lib/moodle-api";
+import { MoodleCourseData, getQuizAttemptReview, streamCourseAnalysis } from "@/lib/moodle-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,9 @@ import { QuizReviewDetail } from "@/components/QuizReviewDetail";
 
 interface CourseDetailProps {
   course: MoodleCourseData;
-  config: MoodleConfig;
 }
 
-export function CourseDetail({ course, config }: CourseDetailProps) {
+export function CourseDetail({ course }: CourseDetailProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [quizReview, setQuizReview] = useState<Record<number, any>>({});
   const [loadingAttempt, setLoadingAttempt] = useState<number | null>(null);
@@ -51,7 +50,7 @@ export function CourseDetail({ course, config }: CourseDetailProps) {
     if (quizReview[attemptId]) return;
     setLoadingAttempt(attemptId);
     try {
-      const data = await getQuizAttemptReview(config, attemptId);
+      const data = await getQuizAttemptReview(attemptId);
       setQuizReview((prev) => ({ ...prev, [attemptId]: data }));
     } catch (err) {
       console.error("Error loading attempt review:", err);
@@ -77,7 +76,7 @@ export function CourseDetail({ course, config }: CourseDetailProps) {
     const reviewsToLoad = allAttemptIds.filter((id) => !quizReview[id]);
     for (const attemptId of reviewsToLoad) {
       try {
-        const data = await getQuizAttemptReview(config, attemptId);
+        const data = await getQuizAttemptReview(attemptId);
         setQuizReview((prev) => ({ ...prev, [attemptId]: data }));
       } catch (err) {
         console.error("Error loading review for analysis:", err);
