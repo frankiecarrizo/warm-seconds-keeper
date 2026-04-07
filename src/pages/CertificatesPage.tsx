@@ -174,7 +174,7 @@ function CertsByUser() {
     setDownloadingId(cert.id);
     const result = await downloadSingleCert(cfg, cert);
     if (result) {
-      const blob = new Blob([result.data], { type: "application/pdf" });
+      const blob = new Blob([result.data.buffer as ArrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -324,7 +324,7 @@ function CertsByCourse() {
     setDownloadingId(cert.id * 1000 + (cert.userId || 0));
     const result = await downloadSingleCert(cfg, cert);
     if (result) {
-      const blob = new Blob([result.data], { type: "application/pdf" });
+      const blob = new Blob([result.data.buffer as ArrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
