@@ -22,7 +22,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 ];
 
 export function UserCharts({ data }: UserChartsProps) {
-  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout } = useSwapy({
+  const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
     storageKey: "user-charts-layout",
     defaultWidgets: DEFAULT_WIDGETS,
   });
