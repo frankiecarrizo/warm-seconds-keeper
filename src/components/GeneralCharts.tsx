@@ -52,7 +52,7 @@ const FULL_WIDTH_IDS = new Set(["top-completions", "categories", "all-courses", 
 
 export function GeneralCharts(props: GeneralChartsProps) {
   const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
-    storageKey: "general-charts-layout-v2",
+    storageKey: "general-charts-layout-v3",
     defaultWidgets: DEFAULT_WIDGETS,
   });
 
