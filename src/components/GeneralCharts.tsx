@@ -82,7 +82,7 @@ export function GeneralCharts(props: GeneralChartsProps) {
   return (
     <div className="space-y-3">
       <div className="flex justify-center">
-        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} />
+        <WidgetManager widgets={widgets} onToggle={toggleWidget} onReset={resetLayout} onShowAll={showAll} onHideAll={hideAll} />
       </div>
       <div ref={containerRef} className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-2 items-stretch">
         {visibleWidgets.map((w) => {
