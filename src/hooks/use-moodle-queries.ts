@@ -15,7 +15,7 @@ import {
 import { cacheSiteInfo } from "@/lib/export-utils";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 export interface LoginLogEntry {
   timecreated: number;
