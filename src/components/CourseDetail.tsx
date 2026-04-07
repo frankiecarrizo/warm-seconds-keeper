@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { MoodleCourseData, getQuizAttemptReview, streamCourseAnalysis } from "@/lib/moodle-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
