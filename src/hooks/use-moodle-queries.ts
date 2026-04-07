@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getSiteInfo,
   getAllCourses,
@@ -10,13 +10,12 @@ import {
   SiteInfo,
   BasicCourse,
   MoodleCategory,
-  UsersSummary,
   CourseEnrollmentSummary,
 } from "@/lib/moodle-api";
 import { cacheSiteInfo } from "@/lib/export-utils";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 
 export interface LoginLogEntry {
   timecreated: number;
@@ -27,18 +26,6 @@ function getMoodleConfig(): MoodleConfig | null {
   const saved = localStorage.getItem("moodle-config");
   if (!saved) return null;
   return JSON.parse(saved);
-}
-
-function handleMoodleError(e: any, disconnect: () => void): string | null {
-  if (e.message?.startsWith("TOKEN_INVALID")) {
-    toast.error("Token inválido o expirado. Reconectá con un nuevo token.");
-    disconnect();
-    return null;
-  }
-  if (e.message?.startsWith("ACCESS_DENIED")) {
-    return "El token no tiene permisos suficientes para consultar datos en Moodle.";
-  }
-  return e.message || "Error desconocido";
 }
 
 // ─── Base data: siteInfo + courses + categories + usersSummary ───
@@ -53,18 +40,24 @@ export function useGeneralBaseData(enabled: boolean) {
 
       const [siteInfo, courses, categories, usersSummary] = await Promise.all([
         getSiteInfo(cfg).catch((e: any) => {
+          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
           console.warn("getSiteInfo failed:", e.message);
           return null;
         }),
         getAllCourses(cfg).catch((e: any) => {
+          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
           console.warn("getAllCourses failed:", e.message);
           return [] as BasicCourse[];
         }),
         getCategories(cfg).catch((e: any) => {
+          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
           console.warn("getCategories failed:", e.message);
           return [] as MoodleCategory[];
         }),
-        getUsersSummary(cfg).catch(() => null),
+        getUsersSummary(cfg).catch((e: any) => {
+          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
+          return null;
+        }),
       ]);
 
       if (!siteInfo && courses.length === 0) {
@@ -76,7 +69,6 @@ export function useGeneralBaseData(enabled: boolean) {
         username: "", fullname: "", userid: 0, release: "", version: "",
       };
 
-      // Filter out site-level course (id=1)
       const filteredCourses = courses.filter((c: any) => c.id !== 1);
       cacheSiteInfo(fallbackSiteInfo);
 
@@ -89,17 +81,15 @@ export function useGeneralBaseData(enabled: boolean) {
     },
     enabled,
     staleTime: Infinity,
-    gcTime: 1000 * 60 * 30, // keep 30 min
+    gcTime: 1000 * 60 * 30,
     retry: 1,
-    meta: { disconnect },
+    throwOnError: false,
   });
 }
 
 // ─── Enrollment summaries (batched, with progress) ───
 export function useEnrollmentData(courseIds: number[], enabled: boolean) {
-  const { disconnect } = useMoodleConnection();
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
-  const abortRef = useRef(false);
 
   const query = useQuery({
     queryKey: ["moodle", "enrollment", courseIds.length],
@@ -107,7 +97,6 @@ export function useEnrollmentData(courseIds: number[], enabled: boolean) {
       const cfg = getMoodleConfig();
       if (!cfg) throw new Error("No config");
 
-      abortRef.current = false;
       const batchSize = 20;
       const allSummaries: CourseEnrollmentSummary[] = [];
       const totalBatches = Math.ceil(courseIds.length / batchSize);
@@ -115,7 +104,6 @@ export function useEnrollmentData(courseIds: number[], enabled: boolean) {
       setProgress({ completed: 0, total: totalBatches });
 
       for (let i = 0; i < courseIds.length; i += batchSize) {
-        if (abortRef.current) break;
         const batch = courseIds.slice(i, i + batchSize);
         try {
           const summaries = await getCoursesEnrollmentSummary(cfg, batch);
@@ -134,7 +122,7 @@ export function useEnrollmentData(courseIds: number[], enabled: boolean) {
     staleTime: Infinity,
     gcTime: 1000 * 60 * 30,
     retry: 1,
-    meta: { disconnect },
+    throwOnError: false,
   });
 
   return { ...query, progress };
@@ -154,23 +142,17 @@ export function useLoginLogs(enabled: boolean) {
     staleTime: Infinity,
     gcTime: 1000 * 60 * 30,
     retry: 1,
+    throwOnError: false,
   });
 }
 
-// ─── Invalidation helper ───
-export function useMoodleInvalidation() {
-  const { queryClient } = useInvalidationClient();
-  return {
-    invalidateGeneral: () => {
-      queryClient.invalidateQueries({ queryKey: ["moodle", "general-base"] });
-      queryClient.invalidateQueries({ queryKey: ["moodle", "enrollment"] });
-      queryClient.invalidateQueries({ queryKey: ["moodle", "login-logs"] });
-    },
-  };
-}
+// ─── Invalidation hook ───
+export function useInvalidateGeneral() {
+  const queryClient = useQueryClient();
 
-// Helper to get queryClient from context
-function useInvalidationClient() {
-  const { useQueryClient } = require("@tanstack/react-query");
-  return { queryClient: useQueryClient() };
+  return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["moodle", "general-base"] });
+    queryClient.invalidateQueries({ queryKey: ["moodle", "enrollment"] });
+    queryClient.invalidateQueries({ queryKey: ["moodle", "login-logs"] });
+  }, [queryClient]);
 }
