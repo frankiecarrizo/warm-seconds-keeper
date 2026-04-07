@@ -1,12 +1,12 @@
 import { useState, useCallback } from "react";
-import { MoodleConfig, MoodleUser, UserFullData, searchUsers, getUserFullData, isTokenError } from "@/lib/moodle-api";
+import { MoodleUser, UserFullData, searchUsers, getUserFullData, isTokenError } from "@/lib/moodle-api";
 import { streamAnalysis } from "@/lib/moodle-api";
 import { flattenUserDataForAI } from "@/lib/ai-data-flatten";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
 
 export function useMoodleAnalytics() {
-  const { isConnected, config, connect, disconnect } = useMoodleConnection();
+  const { isConnected, connect, disconnect } = useMoodleConnection();
   const [users, setUsers] = useState<MoodleUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<MoodleUser | null>(null);
@@ -27,13 +27,10 @@ export function useMoodleAnalytics() {
 
   const search = useCallback(async (term: string) => {
     if (!term.trim()) return;
-    const saved = localStorage.getItem("moodle-config");
-    if (!saved) return;
-    const cfg = JSON.parse(saved);
     setSearchLoading(true);
     setError(null);
     try {
-      const results = await searchUsers(cfg, term);
+      const results = await searchUsers(term);
       setUsers(results);
     } catch (e: any) {
       if (!handleTokenError(e)) {
@@ -58,13 +55,8 @@ export function useMoodleAnalytics() {
     setError(null);
     setAnalysis("");
     setUserData(null);
-
-    const saved = localStorage.getItem("moodle-config");
-    if (!saved) return;
-    const cfg = JSON.parse(saved);
-
     try {
-      const data = await getUserFullData(cfg, selectedUser.id);
+      const data = await getUserFullData(selectedUser.id);
       setUserData(data);
     } catch (e: any) {
       if (!handleTokenError(e)) {
@@ -102,7 +94,6 @@ export function useMoodleAnalytics() {
   }, [userData, handleTokenError]);
 
   return {
-    config,
     isConnected,
     connect,
     disconnect,
