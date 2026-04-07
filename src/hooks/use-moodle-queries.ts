@@ -82,10 +82,15 @@ export function useGeneralBaseData(enabled: boolean) {
     enabled,
     staleTime: Infinity,
     gcTime: 1000 * 60 * 30,
-    retry: 1,
+    retry: (failureCount, error) => {
+      if (error?.message?.startsWith("TOKEN_INVALID")) return false;
+      return failureCount < 1;
+    },
     throwOnError: false,
+    meta: { disconnect },
   });
 }
+
 
 // ─── Enrollment summaries (batched, with progress) ───
 export function useEnrollmentData(courseIds: number[], enabled: boolean) {
