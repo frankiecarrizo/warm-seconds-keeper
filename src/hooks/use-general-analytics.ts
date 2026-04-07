@@ -13,6 +13,7 @@ import {
   getLoginLogs,
   isTokenError,
 } from "@/lib/moodle-api";
+import { cacheSiteInfo } from "@/lib/export-utils";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
 
@@ -100,6 +101,7 @@ export function useGeneralAnalytics() {
       const filteredCourses = courses.filter((c: any) => c.id !== 1);
 
       const initialGeneralData: GeneralData = { siteInfo: fallbackSiteInfo, courses: filteredCourses, categories, enrollmentSummaries: [], usersSummary, loginLogs: [] };
+      cacheSiteInfo(fallbackSiteInfo);
       cachedData = initialGeneralData;
       cachedForUrl = cfg.moodleUrl;
       setData(initialGeneralData);
