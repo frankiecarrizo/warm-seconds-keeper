@@ -97,7 +97,6 @@ export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", en
       try {
         swapyRef.current = createSwapy(containerRef.current, {
           animation,
-          manualSwap: true,
         });
 
         swapyRef.current.onSwap((event: any) => {
@@ -106,10 +105,11 @@ export function useSwapy({ storageKey, defaultWidgets, animation = "dynamic", en
             .map((entry: any) => entry.item || entry.itemId)
             .filter(Boolean) as string[];
 
+          if (newOrder.length === 0) return;
+
           setWidgets((prev) => {
             const map = new Map(prev.map((w) => [w.id, w]));
             const reordered = newOrder.map((id) => map.get(id)).filter(Boolean) as WidgetConfig[];
-            // Add any not in swap (hidden ones)
             const reorderedIds = new Set(newOrder);
             for (const w of prev) {
               if (!reorderedIds.has(w.id)) {
