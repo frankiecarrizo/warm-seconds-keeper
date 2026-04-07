@@ -261,7 +261,7 @@ const GeneralPage = () => {
 
   if (!baseQuery.data) {
     return (
-      <div className="container max-w-5xl mx-auto px-3 sm:px-4 py-8">
+      <div className="max-w-5xl mx-auto py-8">
         <Card className="glass-card border-destructive/30">
           <CardContent className="p-6">
             <div className="flex items-start gap-3">
