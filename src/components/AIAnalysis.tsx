@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, BookOpen, GraduationCap, AlertTriangle, TrendingUp, Lightbulb, Target, Users, Clock, BarChart3, Shield, Award, Brain, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, BookOpen, GraduationCap, AlertTriangle, TrendingUp, Lightbulb, Target, Users, Clock, BarChart3, Shield, Award, Brain, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, PieChart, Pie, Tooltip } from "recharts";
