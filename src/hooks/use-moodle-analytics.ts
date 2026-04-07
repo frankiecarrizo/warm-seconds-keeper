@@ -82,8 +82,10 @@ export function useMoodleAnalytics() {
     setError(null);
 
     try {
+      // Send flattened data to reduce tokens and latency
+      const flattenedData = flattenUserDataForAI(userData);
       await streamAnalysis({
-        userData,
+        userData: flattenedData as any,
         onDelta: (text) => setAnalysis((prev) => prev + text),
         onDone: () => setAnalysisLoading(false),
         onError: (err) => {

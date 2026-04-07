@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { MoodleCourse, CourseOverviewData, searchCourses, getCourseOverviewData, streamCourseOverviewAnalysis, isTokenError } from "@/lib/moodle-api";
+import { flattenCourseDataForAI } from "@/lib/ai-data-flatten";
 import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 import { toast } from "sonner";
 
