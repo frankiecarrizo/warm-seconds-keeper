@@ -239,15 +239,59 @@ const GeneralPage = () => {
     }
   };
 
-  const StatSkeleton = () => (
-    <Card className="glass-card">
-      <CardContent className="p-4 text-center space-y-2">
-        <Skeleton className="h-5 w-5 mx-auto rounded-full" />
-        <Skeleton className="h-7 w-12 mx-auto" />
-        <Skeleton className="h-3 w-16 mx-auto" />
-      </CardContent>
-    </Card>
-  );
+  const LOADING_MESSAGES = [
+    "Recopilando datos de tu campus… ☕",
+    "Peor es entrar curso por curso, ¿no? 😉",
+    "Consultando a Moodle… está pensando 🤔",
+    "Esto puede tardar según la cantidad de cursos y usuarios",
+    "Juntando inscripciones, notas y accesos… 📊",
+    "Ya falta poco, paciencia de docente 🧑‍🏫",
+    "Procesando lotes de datos… va todo bien ✅",
+    "Acá vas a tener todo junto, sin click por click 🎯",
+    "Moodle respondiendo… a su ritmo 🐢",
+    "Preparando tu resumen completo… 🚀",
+  ];
+
+  const StatSkeleton = ({ index = 0 }: { index?: number }) => {
+    const [msgIdx, setMsgIdx] = useState(index % LOADING_MESSAGES.length);
+    
+    useMemo(() => {
+      const interval = setInterval(() => {
+        setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }, []);
+
+    // Use useEffect instead for cleanup
+    const [, setCleanup] = useState<NodeJS.Timeout>();
+    useMemo(() => {
+      const id = setInterval(() => {
+        setMsgIdx(prev => (prev + 1) % LOADING_MESSAGES.length);
+      }, 3000 + index * 500);
+      setCleanup(id);
+      return id;
+    }, []);
+
+    return (
+      <Card className="glass-card overflow-hidden">
+        <CardContent className="p-4 text-center flex flex-col items-center justify-center min-h-[88px] gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={msgIdx}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3 }}
+              className="text-[10px] leading-tight text-muted-foreground text-center px-1"
+            >
+              {LOADING_MESSAGES[msgIdx]}
+            </motion.p>
+          </AnimatePresence>
+        </CardContent>
+      </Card>
+    );
+  };
 
   const ChartsSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
