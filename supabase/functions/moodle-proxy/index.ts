@@ -975,10 +975,23 @@ serve(async (req) => {
         const { url: certUrl, type, certificateId, userId } = params;
         if (!certUrl) throw { message: "Missing certificate url", status: 400 };
         if (type === "customcert" && certificateId && userId) {
+          // Try mobile endpoint first
           result = await tryCustomCertMobileDownload(Number(certificateId), Number(userId));
           if (!result.downloadable) {
+            // Try direct URL with token
             const fallback = await tryDirectCertificateDownload(certUrl);
-            result = fallback.downloadable ? fallback : result;
+            if (fallback.downloadable) { result = fallback; break; }
+            // Try pluginfile.php with different context patterns
+            const pluginUrls = [
+              `${moodleUrl}/webservice/pluginfile.php/1/mod_customcert/issues/${certificateId}/${userId}/certificate.pdf`,
+              `${moodleUrl}/mod/customcert/my_certificates.php?downloadcert=1&certificateid=${certificateId}&userid=${userId}`,
+              `${moodleUrl}/mod/customcert/view.php?id=${params.cmid || certUrl.match(/id=(\d+)/)?.[1] || ""}&downloadissue=${userId}`,
+            ];
+            for (const pUrl of pluginUrls) {
+              const attempt = await tryDirectCertificateDownload(pUrl);
+              if (attempt.downloadable) { result = attempt; break; }
+            }
+            if (result.downloadable) break;
           }
           break;
         }
