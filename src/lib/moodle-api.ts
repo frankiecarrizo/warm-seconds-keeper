@@ -127,6 +127,8 @@ export const isAccessError = (message: string): boolean => {
   return ACCESS_ERROR_PATTERNS.some((p) => lower.includes(p));
 };
 
+const getSessionBlob = () => localStorage.getItem("moodle-session") || "";
+
 export const callProxy = async (
   action: string,
   params?: Record<string, any>
@@ -137,8 +139,8 @@ export const callProxy = async (
       "Content-Type": "application/json",
       Authorization: `Bearer ${API_KEY}`,
       apikey: API_KEY,
+      "x-moodle-session": getSessionBlob(),
     },
-    credentials: "include",
     body: JSON.stringify({ action, params }),
   });
 
@@ -169,26 +171,20 @@ export const connectMoodle = async (moodleUrl: string, moodleToken: string) => {
       Authorization: `Bearer ${API_KEY}`,
       apikey: API_KEY,
     },
-    credentials: "include",
     body: JSON.stringify({ action: "connect", moodleUrl, moodleToken }),
   });
   const data = await response.json();
   if (data?.error) throw new Error(data.error);
+  // Store encrypted session blob
+  if (data?.session) {
+    localStorage.setItem("moodle-session", data.session);
+  }
   return data;
 };
 
 export const disconnectMoodle = async () => {
-  const response = await fetch(PROXY_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
-      apikey: API_KEY,
-    },
-    credentials: "include",
-    body: JSON.stringify({ action: "disconnect" }),
-  });
-  return response.json();
+  localStorage.removeItem("moodle-session");
+  return { success: true };
 };
 
 export const searchUsers = async (search: string) => {
