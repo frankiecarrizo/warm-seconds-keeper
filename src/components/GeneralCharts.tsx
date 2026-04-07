@@ -35,14 +35,14 @@ interface GeneralChartsProps {
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: true },
-  { id: "completion-donut", label: "Finalización Global", visible: true },
   { id: "user-status", label: "Estado de Usuarios", visible: true },
   { id: "access-donut", label: "Acceso a la Plataforma", visible: true },
   { id: "top-never-accessed", label: "Top 5 — Sin Ingresar", visible: true },
   { id: "top-access", label: "Top 5 — Mayor Ingreso", visible: true },
   { id: "logins-by-month", label: "Ingresos por Mes", visible: true },
   { id: "heatmap", label: "Mapa de Calor", visible: true },
+  { id: "top-enrollment", label: "Top 5 — Inscripciones", visible: true },
+  { id: "completion-donut", label: "Finalización Global", visible: true },
   { id: "top-completions", label: "Top 5 — Finalizaciones", visible: true },
   { id: "categories", label: "Cursos por Categoría", visible: true },
   { id: "all-courses", label: "Todos los Cursos", visible: true },
@@ -52,7 +52,7 @@ const FULL_WIDTH_IDS = new Set(["top-completions", "categories", "all-courses", 
 
 export function GeneralCharts(props: GeneralChartsProps) {
   const { containerRef, widgets, visibleWidgets, toggleWidget, resetLayout, showAll, hideAll } = useSwapy({
-    storageKey: "general-charts-layout",
+    storageKey: "general-charts-layout-v2",
     defaultWidgets: DEFAULT_WIDGETS,
   });
 
