@@ -283,16 +283,78 @@ const GeneralPage = () => {
     );
   };
 
+  const ASCII_CHARTS = [
+    // Bar chart
+    `  █▓░░░░░░░░\n  ████▓░░░░░\n  ██████▓░░░\n  █████████▓\n  ▔▔▔▔▔▔▔▔▔▔`,
+    // Pie chart
+    `    ╭──────╮\n   ╱ ▓▓▓▓░░ ╲\n  │ ▓▓▓▓░░░░ │\n   ╲ ░░░░░░ ╱\n    ╰──────╯`,
+    // Line chart
+    `          ╱╲\n     ╱╲  ╱  ╲\n    ╱  ╲╱    ╲\n  ─╱         ╲─\n  ▔▔▔▔▔▔▔▔▔▔▔▔`,
+    // Histogram
+    `  ░░  ██  ░░  ██\n  ██  ██  ██  ██\n  ██  ██  ██  ██\n  ██  ██  ██  ██\n  ▔▔  ▔▔  ▔▔  ▔▔`,
+  ];
+
+  const CHART_LOADING_MSGS = [
+    "Preparando tus gráficos… 📊",
+    "Dibujando tendencias… 📈",
+    "Armando visualizaciones… 🎨",
+    "Calculando porcentajes… 🔢",
+  ];
+
+  const ChartSkeletonCard = ({ index }: { index: number }) => {
+    const [msgIdx, setMsgIdx] = useState(0);
+    const [barWidths, setBarWidths] = useState([20, 40, 60, 80]);
+
+    useEffect(() => {
+      const msgId = setInterval(() => {
+        setMsgIdx(prev => (prev + 1) % CHART_LOADING_MSGS.length);
+      }, 2500 + index * 300);
+      const barId = setInterval(() => {
+        setBarWidths(prev => prev.map(w => {
+          const next = w + (Math.random() * 20 - 8);
+          return Math.max(15, Math.min(95, next));
+        }));
+      }, 800);
+      return () => { clearInterval(msgId); clearInterval(barId); };
+    }, [index]);
+
+    return (
+      <Card className="glass-card overflow-hidden">
+        <CardContent className="p-6 flex flex-col items-center justify-center min-h-[240px] gap-4">
+          <pre className="text-muted-foreground/40 text-[11px] leading-tight font-mono select-none text-center">
+            {ASCII_CHARTS[index % ASCII_CHARTS.length]}
+          </pre>
+          <div className="w-full space-y-2 px-4">
+            {barWidths.map((w, i) => (
+              <div key={i} className="h-2 rounded-full bg-muted overflow-hidden">
+                <motion.div
+                  className="h-full rounded-full bg-primary/30"
+                  animate={{ width: `${w}%` }}
+                  transition={{ duration: 0.6, ease: "easeInOut" }}
+                />
+              </div>
+            ))}
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={msgIdx}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.3 }}
+              className="text-xs text-muted-foreground text-center"
+            >
+              {CHART_LOADING_MSGS[msgIdx]}
+            </motion.p>
+          </AnimatePresence>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const ChartsSkeleton = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {[1, 2, 3, 4].map(i => (
-        <Card key={i} className="glass-card">
-          <CardContent className="p-6 space-y-4">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-48 w-full" />
-          </CardContent>
-        </Card>
-      ))}
+      {[0, 1, 2, 3].map(i => <ChartSkeletonCard key={i} index={i} />)}
     </div>
   );
 
