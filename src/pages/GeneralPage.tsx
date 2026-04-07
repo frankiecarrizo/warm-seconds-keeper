@@ -1,4 +1,5 @@
 import { useMemo, useState, lazy, Suspense, useCallback } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { LayoutDashboard, BookOpen, Users, Loader2, AlertCircle, GraduationCap, TrendingUp, UserX, CheckCircle2, RefreshCw, FolderTree, UserCheck, UserMinus, Trash2, LogIn, Download, FileText, FileSpreadsheet, Brain } from "lucide-react";
 import { exportGeneralToCSV, exportGeneralToPDF } from "@/lib/export-utils";
 import { MoodleConnectForm } from "@/components/MoodleConnectForm";
@@ -12,6 +13,7 @@ import { useGeneralBaseData, useEnrollmentData, useLoginLogs, useInvalidateGener
 import { motion, AnimatePresence } from "framer-motion";
 import { AIAnalysis } from "@/components/AIAnalysis";
 import { toast } from "sonner";
+import { MobileCardSlider } from "@/components/MobileCardSlider";
 
 const GeneralCharts = lazy(() => import("@/components/GeneralCharts").then(m => ({ default: m.GeneralCharts })));
 
@@ -20,6 +22,7 @@ const GeneralPage = () => {
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [isFreshLoad, setIsFreshLoad] = useState(false);
+  const isMobile = useIsMobile();
 
   // ─── TanStack Query hooks ───
   const baseQuery = useGeneralBaseData(isConnected);
@@ -351,94 +354,111 @@ const GeneralPage = () => {
           </motion.div>
         )}
 
-        {/* Stat cards - Row 1 */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-          <Card className="glass-card">
-            <CardContent className="p-4 text-center">
-              <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
-              <p className="text-2xl font-bold text-foreground">{courses.length}</p>
-              <p className="text-xs text-muted-foreground">Cursos</p>
-            </CardContent>
-          </Card>
-          <Card className="glass-card">
-            <CardContent className="p-4 text-center">
-              <Users className="h-5 w-5 text-info mx-auto mb-1" />
-              <p className="text-2xl font-bold text-info">{usersSummary?.total || 0}</p>
-              <p className="text-xs text-muted-foreground">Usuarios</p>
-            </CardContent>
-          </Card>
-          <Card className="glass-card">
-            <CardContent className="p-4 text-center">
-              <UserCheck className="h-5 w-5 text-success mx-auto mb-1" />
-              <p className="text-2xl font-bold text-success">{usersSummary?.active || 0}</p>
-              <p className="text-xs text-muted-foreground">Activos</p>
-            </CardContent>
-          </Card>
-          <Card className="glass-card">
-            <CardContent className="p-4 text-center">
-              <UserX className="h-5 w-5 text-warning mx-auto mb-1" />
-              <p className="text-2xl font-bold text-warning">{usersSummary?.suspended || 0}</p>
-              <p className="text-xs text-muted-foreground">Suspendidos</p>
-            </CardContent>
-          </Card>
-          {enrollmentLoading ? <StatSkeleton /> : (
-            <Card className="glass-card">
+        {/* Stat cards */}
+        {(() => {
+          const row1Cards = [
+            <Card key="courses" className="glass-card">
               <CardContent className="p-4 text-center">
-                <GraduationCap className="h-5 w-5 text-accent-foreground mx-auto mb-1" />
-                <p className="text-2xl font-bold text-accent-foreground">{stats.totalTeachers}</p>
-                <p className="text-xs text-muted-foreground">Docentes</p>
+                <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
+                <p className="text-2xl font-bold text-foreground">{courses.length}</p>
+                <p className="text-xs text-muted-foreground">Cursos</p>
               </CardContent>
-            </Card>
-          )}
-        </motion.div>
+            </Card>,
+            <Card key="users" className="glass-card">
+              <CardContent className="p-4 text-center">
+                <Users className="h-5 w-5 text-info mx-auto mb-1" />
+                <p className="text-2xl font-bold text-info">{usersSummary?.total || 0}</p>
+                <p className="text-xs text-muted-foreground">Usuarios</p>
+              </CardContent>
+            </Card>,
+            <Card key="active" className="glass-card">
+              <CardContent className="p-4 text-center">
+                <UserCheck className="h-5 w-5 text-success mx-auto mb-1" />
+                <p className="text-2xl font-bold text-success">{usersSummary?.active || 0}</p>
+                <p className="text-xs text-muted-foreground">Activos</p>
+              </CardContent>
+            </Card>,
+            <Card key="suspended" className="glass-card">
+              <CardContent className="p-4 text-center">
+                <UserX className="h-5 w-5 text-warning mx-auto mb-1" />
+                <p className="text-2xl font-bold text-warning">{usersSummary?.suspended || 0}</p>
+                <p className="text-xs text-muted-foreground">Suspendidos</p>
+              </CardContent>
+            </Card>,
+            enrollmentLoading ? <StatSkeleton key="teachers-skel" /> : (
+              <Card key="teachers" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <GraduationCap className="h-5 w-5 text-accent-foreground mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-accent-foreground">{stats.totalTeachers}</p>
+                  <p className="text-xs text-muted-foreground">Docentes</p>
+                </CardContent>
+              </Card>
+            ),
+          ];
 
-        {/* Stat cards - Row 2 */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-          className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-          {enrollmentLoading ? (
-            <>{[1,2,3,4,5].map(i => <StatSkeleton key={i} />)}</>
-          ) : (
-            <>
-              <Card className="glass-card">
+          const row2Cards = enrollmentLoading
+            ? [1,2,3,4,5].map(i => <StatSkeleton key={`skel-${i}`} />)
+            : [
+              <Card key="enrollments" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <TrendingUp className="h-5 w-5 text-primary mx-auto mb-1" />
                   <p className="text-2xl font-bold text-primary">{stats.totalStudents}</p>
                   <p className="text-xs text-muted-foreground">Inscripciones</p>
                 </CardContent>
-              </Card>
-              <Card className="glass-card">
+              </Card>,
+              <Card key="completions" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <CheckCircle2 className="h-5 w-5 text-success mx-auto mb-1" />
                   <p className="text-2xl font-bold text-success">{stats.totalCompleted}</p>
                   <p className="text-xs text-muted-foreground">Finalizaciones</p>
                 </CardContent>
-              </Card>
-              <Card className="glass-card">
+              </Card>,
+              <Card key="completion-rate" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <CheckCircle2 className="h-5 w-5 text-success mx-auto mb-1" />
                   <p className="text-2xl font-bold text-success">{stats.completionRate}%</p>
                   <p className="text-xs text-muted-foreground">% Finalización</p>
                 </CardContent>
-              </Card>
-              <Card className="glass-card">
+              </Card>,
+              <Card key="never-accessed" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <UserMinus className="h-5 w-5 text-destructive mx-auto mb-1" />
                   <p className="text-2xl font-bold text-destructive">{stats.neverAccessedRate}%</p>
                   <p className="text-xs text-muted-foreground">% Sin ingreso</p>
                 </CardContent>
-              </Card>
-              <Card className="glass-card">
+              </Card>,
+              <Card key="total-access" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <LogIn className="h-5 w-5 text-info mx-auto mb-1" />
                   <p className="text-2xl font-bold text-info">{stats.totalAccessed}</p>
                   <p className="text-xs text-muted-foreground">Total ingresos</p>
                 </CardContent>
-              </Card>
-            </>
-          )}
-        </motion.div>
+              </Card>,
+            ];
 
+          const allCards = [...row1Cards, ...row2Cards];
+
+          if (isMobile) {
+            return (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+                <MobileCardSlider cardsPerPage={4}>{allCards}</MobileCardSlider>
+              </motion.div>
+            );
+          }
+
+          return (
+            <>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+                className="grid grid-cols-5 gap-3">
+                {row1Cards}
+              </motion.div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
+                className="grid grid-cols-5 gap-3">
+                {row2Cards}
+              </motion.div>
+            </>
+          );
+        })()}
         {/* AI Analysis */}
         <AIAnalysis analysis={aiAnalysis} loading={aiLoading} />
 
