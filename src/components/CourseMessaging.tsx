@@ -158,8 +158,11 @@ export function CourseMessaging({ allStudentsBasic, courseName, config, activity
           for (const user of batch) {
             const personalizedText = resolveTemplate(message, user) + signature;
             const { data, error } = await supabase.functions.invoke("moodle-proxy", {
-              body: { ...config, action: "send_message", params: { userIds: [user.id], text: personalizedText } },
-              headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+              body: { action: "send_message", params: { userIds: [user.id], text: personalizedText } },
+              headers: {
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                "x-moodle-session": localStorage.getItem("moodle-session") || "",
+              },
             });
             if (error) errors.push(`${user.fullname}: ${error.message}`);
             else if (data?.hasErrors) errors.push(`${user.fullname}: ${data.errors?.[0]}`);
