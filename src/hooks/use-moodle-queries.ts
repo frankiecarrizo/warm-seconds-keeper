@@ -89,6 +89,16 @@ export function useGeneralBaseData(enabled: boolean) {
     throwOnError: false,
     meta: { disconnect },
   });
+
+  // Auto-disconnect on token errors
+  useEffect(() => {
+    if (query.error?.message?.startsWith("TOKEN_INVALID")) {
+      toast.error("El token de Moodle es inválido o expiró. Por favor, reconectá.");
+      disconnect();
+    }
+  }, [query.error, disconnect]);
+
+  return query;
 }
 
 
