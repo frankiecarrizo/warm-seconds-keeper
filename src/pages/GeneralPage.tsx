@@ -501,6 +501,8 @@ const GeneralPage = () => {
               formatDate={formatDate}
               isFreshLoad={isFreshLoad}
               loginLogs={loginLogs}
+              neverAccessedByCoursData={chartData.neverAccessedByCoursData}
+              accessByCoursData={chartData.accessByCoursData}
             />
           </Suspense>
         ) : null}

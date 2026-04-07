@@ -3,7 +3,6 @@ import { WidgetManager } from "@/components/WidgetManager";
 import { motion } from "framer-motion";
 import type { LoginLogEntry } from "@/hooks/use-moodle-queries";
 
-// Lazy widget components — only mount when visible, so their useMemo never runs otherwise
 import { TopEnrollmentWidget } from "@/components/general-widgets/TopEnrollmentWidget";
 import { CompletionDonutWidget } from "@/components/general-widgets/CompletionDonutWidget";
 import { UserStatusWidget } from "@/components/general-widgets/UserStatusWidget";
@@ -13,6 +12,8 @@ import { HeatmapWidget } from "@/components/general-widgets/HeatmapWidget";
 import { TopCompletionsWidget } from "@/components/general-widgets/TopCompletionsWidget";
 import { CategoriesWidget } from "@/components/general-widgets/CategoriesWidget";
 import { AllCoursesWidget } from "@/components/general-widgets/AllCoursesWidget";
+import { TopNeverAccessedWidget } from "@/components/general-widgets/TopNeverAccessedWidget";
+import { TopAccessWidget } from "@/components/general-widgets/TopAccessWidget";
 
 interface GeneralChartsProps {
   enrollmentChartData: { name: string; estudiantes: number; docentes: number }[];
@@ -29,6 +30,8 @@ interface GeneralChartsProps {
   formatDate: (ts: number) => string;
   loginLogs: LoginLogEntry[];
   isFreshLoad?: boolean;
+  neverAccessedByCoursData: { name: string; sinIngreso: number }[];
+  accessByCoursData: { name: string; ingresos: number }[];
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
@@ -36,6 +39,8 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "completion-donut", label: "Finalización Global", visible: true },
   { id: "user-status", label: "Estado de Usuarios", visible: true },
   { id: "access-donut", label: "Acceso a la Plataforma", visible: true },
+  { id: "top-never-accessed", label: "Top 5 — Sin Ingresar", visible: true },
+  { id: "top-access", label: "Top 5 — Mayor Ingreso", visible: true },
   { id: "logins-by-month", label: "Ingresos por Mes", visible: true },
   { id: "heatmap", label: "Mapa de Calor", visible: true },
   { id: "top-completions", label: "Top 5 — Finalizaciones", visible: true },
@@ -51,8 +56,6 @@ export function GeneralCharts(props: GeneralChartsProps) {
     defaultWidgets: DEFAULT_WIDGETS,
   });
 
-  // Each widget component is only mounted when visible.
-  // Heavy computations (useMemo) inside each widget never execute when hidden.
   const renderWidget = (id: string) => {
     switch (id) {
       case "top-enrollment":
@@ -63,6 +66,10 @@ export function GeneralCharts(props: GeneralChartsProps) {
         return <UserStatusWidget data={props.userStatusPieData} total={props.usersTotalCount} />;
       case "access-donut":
         return <AccessDonutWidget data={props.accessPieData} accessRate={100 - props.neverAccessedRate} />;
+      case "top-never-accessed":
+        return <TopNeverAccessedWidget data={props.neverAccessedByCoursData} />;
+      case "top-access":
+        return <TopAccessWidget data={props.accessByCoursData} />;
       case "logins-by-month":
         return <LoginsByMonthWidget loginLogs={props.loginLogs} />;
       case "heatmap":
