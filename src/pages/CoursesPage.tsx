@@ -228,6 +228,14 @@ const CoursesPage = () => {
             {/* Charts */}
             {courseData && <CourseCharts data={courseData} />}
 
+            {/* Reports */}
+            {courseData && (
+              <div className="grid grid-cols-1 gap-4">
+                <ActivityCompletionReport courseId={selectedCourse.id} courseName={selectedCourse.fullname} />
+                <GraderReport courseId={selectedCourse.id} courseName={selectedCourse.fullname} />
+              </div>
+            )}
+
             {/* Messaging */}
             {courseData && (() => {
               const saved = localStorage.getItem("moodle-config");
