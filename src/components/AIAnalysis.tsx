@@ -201,7 +201,7 @@ function FullSectionCard({ section }: { section: ParsedSection }) {
 }
 
 export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
-  const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: false, slidesToScroll: 2 });
+  const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: false, slidesToScroll: 1 });
   const [canScrollPrev, setCanScrollPrev] = useState(false);
   const [canScrollNext, setCanScrollNext] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -324,7 +324,7 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
                       >
                         <div className="grid gap-3 md:grid-cols-2 h-full items-stretch">
                           {pair.map((section, i) => (
-                            <div key={i} className="min-h-[320px]">
+                            <div key={i} className="min-h-[160px]">
                               <FullSectionCard section={section} />
                             </div>
                           ))}
