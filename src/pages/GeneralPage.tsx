@@ -353,7 +353,7 @@ const GeneralPage = () => {
 
         {/* Stat cards - Row 1 */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
           <Card className="glass-card">
             <CardContent className="p-4 text-center">
               <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
