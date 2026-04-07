@@ -148,49 +148,34 @@ function FullSectionCard({ section }: { section: ParsedSection }) {
   const listItems = section.lines.filter(l => l.startsWith("- ") || l.startsWith("* "));
   const textLines = section.lines.filter(l => !l.startsWith("- ") && !l.startsWith("* ") && l.trim() !== "" && !l.startsWith("### "));
   const subHeadings = section.lines.filter(l => l.startsWith("### "));
-  const showPie = section.chartData && section.chartData.length <= 5;
 
   return (
     <Card className="overflow-hidden border-border/50 h-full flex flex-col">
-      <CardHeader className="py-3 px-4 border-b border-border/30">
-        <div className="flex items-center gap-2.5">
-          <span className={`flex items-center justify-center h-7 w-7 rounded-md ${section.style.bgColor} ${section.style.color}`}>
+      <CardHeader className="py-2 px-4 border-b border-border/30">
+        <div className="flex items-center justify-center gap-2">
+          <span className={`flex items-center justify-center h-6 w-6 rounded-md ${section.style.bgColor} ${section.style.color}`}>
             {section.style.icon}
           </span>
-          <CardTitle className="text-sm font-semibold text-foreground">
+          <CardTitle className="text-xs font-semibold text-foreground text-center">
             {section.title}
           </CardTitle>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pt-3 pb-4 flex-1 overflow-y-auto">
-        {section.metrics.length > 0 && (
-          <div className="flex gap-2 mb-3 flex-wrap">
-            {section.metrics.map((m, i) => (
-              <MetricBadge key={i} value={m.value} label={m.label} />
-            ))}
-          </div>
-        )}
-
-        {section.chartData && (
-          <div className="mb-3 rounded-lg bg-muted/30 p-2">
-            {showPie ? <MiniPieChart data={section.chartData} /> : <MiniBarChart data={section.chartData} />}
-          </div>
-        )}
-
-        <div className="space-y-1.5">
+      <CardContent className="px-3 pt-2 pb-3 flex-1 overflow-y-auto">
+        <div className="space-y-1">
           {textLines.map((line, i) => (
-            <p key={`t-${i}`} className="text-sm text-muted-foreground leading-relaxed">
+            <p key={`t-${i}`} className="text-xs text-muted-foreground leading-relaxed">
               {renderInlineFormatting(line)}
             </p>
           ))}
           {subHeadings.map((h, i) => (
-            <h4 key={`h-${i}`} className="text-xs font-semibold text-foreground mt-2 mb-1">
+            <h4 key={`h-${i}`} className="text-[11px] font-semibold text-foreground mt-1.5 mb-0.5">
               {renderInlineFormatting(h.replace(/^###\s*/, ""))}
             </h4>
           ))}
           {listItems.map((item, i) => (
-            <div key={`l-${i}`} className="flex gap-2 text-sm text-muted-foreground leading-relaxed">
-              <span className="text-primary mt-1 flex-shrink-0 text-xs">•</span>
+            <div key={`l-${i}`} className="flex gap-1.5 text-xs text-muted-foreground leading-relaxed">
+              <span className="text-primary mt-0.5 flex-shrink-0">•</span>
               <span>{renderInlineFormatting(item.replace(/^[-*]\s*/, ""))}</span>
             </div>
           ))}
