@@ -45,7 +45,10 @@ export function ActivityCompletionReport({ courseId, courseName }: Props) {
       s.email,
       ...data.activities.map(a => {
         const state = s.completions[a.cmid];
-        return state === 1 || state === 2 ? "✓" : state === 3 ? "✗" : "-";
+        if (state === 1 || state === 2) return "✓";
+        if (state === 3) return "✗";
+        if (state === 0) return "☐";
+        return "";
       }),
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
