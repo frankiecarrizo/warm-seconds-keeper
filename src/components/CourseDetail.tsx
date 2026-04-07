@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { toast } from "sonner";
 import { MoodleCourseData, getQuizAttemptReview, streamCourseAnalysis } from "@/lib/moodle-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +24,7 @@ interface CourseDetailProps {
 export function CourseDetail({ course }: CourseDetailProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [quizReview, setQuizReview] = useState<Record<number, any>>({});
+  const [quizAccessDenied, setQuizAccessDenied] = useState<Record<number, boolean>>({});
   const [loadingAttempt, setLoadingAttempt] = useState<number | null>(null);
   const [courseAnalysis, setCourseAnalysis] = useState("");
   const [courseAnalysisLoading, setCourseAnalysisLoading] = useState(false);
@@ -48,14 +48,20 @@ export function CourseDetail({ course }: CourseDetailProps) {
   };
 
   const loadAttemptReview = async (attemptId: number) => {
-    if (quizReview[attemptId]) return;
+    if (quizReview[attemptId] || quizAccessDenied[attemptId]) return;
     setLoadingAttempt(attemptId);
     try {
       const data = await getQuizAttemptReview(attemptId);
       if (data?.accessDenied) {
-        toast.info("No se puede ver la revisión: permisos insuficientes en este quiz.");
+        setQuizAccessDenied((prev) => ({ ...prev, [attemptId]: true }));
         return;
       }
+      setQuizAccessDenied((prev) => {
+        if (!prev[attemptId]) return prev;
+        const next = { ...prev };
+        delete next[attemptId];
+        return next;
+      });
       setQuizReview((prev) => ({ ...prev, [attemptId]: data }));
     } catch (err) {
       console.error("Error loading attempt review:", err);
@@ -82,6 +88,10 @@ export function CourseDetail({ course }: CourseDetailProps) {
     for (const attemptId of reviewsToLoad) {
       try {
         const data = await getQuizAttemptReview(attemptId);
+        if (data?.accessDenied) {
+          setQuizAccessDenied((prev) => ({ ...prev, [attemptId]: true }));
+          continue;
+        }
         setQuizReview((prev) => ({ ...prev, [attemptId]: data }));
       } catch (err) {
         console.error("Error loading review for analysis:", err);
@@ -333,6 +343,9 @@ export function CourseDetail({ course }: CourseDetailProps) {
                                       className="h-6 px-2 text-xs text-primary"
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                         if (quizAccessDenied[attempt.id]) {
+                                           return;
+                                         }
                                         if (quizReview[attempt.id]) {
                                           setQuizReview((prev) => {
                                             const next = { ...prev };
@@ -343,10 +356,12 @@ export function CourseDetail({ course }: CourseDetailProps) {
                                           loadAttemptReview(attempt.id);
                                         }
                                       }}
-                                      disabled={loadingAttempt === attempt.id}
+                                      disabled={loadingAttempt === attempt.id || quizAccessDenied[attempt.id]}
                                     >
                                       {loadingAttempt === attempt.id ? (
                                         <Loader2 className="h-3 w-3 animate-spin" />
+                                       ) : quizAccessDenied[attempt.id] ? (
+                                         "Sin permisos"
                                       ) : quizReview[attempt.id] ? (
                                         "Ocultar"
                                       ) : (
@@ -357,6 +372,16 @@ export function CourseDetail({ course }: CourseDetailProps) {
 
                                   {/* Quiz review detail */}
                                   <AnimatePresence>
+                                     {quizAccessDenied[attempt.id] && (
+                                       <motion.div
+                                         initial={{ opacity: 0, height: 0 }}
+                                         animate={{ opacity: 1, height: "auto" }}
+                                         exit={{ opacity: 0, height: 0 }}
+                                         className="ml-4 mt-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
+                                       >
+                                         No se puede ver la revisión porque este cuestionario no permite ese acceso con el token actual.
+                                       </motion.div>
+                                     )}
                                     {quizReview[attempt.id] && (
                                       <motion.div
                                         initial={{ opacity: 0, height: 0 }}
