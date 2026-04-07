@@ -301,15 +301,15 @@ export function AIAnalysis({ analysis, loading }: AIAnalysisProps) {
                 <div className="flex -ml-3">
                   {/* Group sections in pairs */}
                   {Array.from({ length: totalPages }).map((_, pageIdx) => {
-                    const pair = sections.slice(pageIdx * 2, pageIdx * 2 + 2);
+                    const group = sections.slice(pageIdx * 4, pageIdx * 4 + 4);
                     return (
                       <div
                         key={pageIdx}
                         className="flex-[0_0_100%] min-w-0 pl-3"
                       >
-                        <div className="grid gap-3 md:grid-cols-2 h-full items-stretch">
-                          {pair.map((section, i) => (
-                            <div key={i} className="min-h-[160px]">
+                        <div className="grid gap-2 grid-cols-2 md:grid-cols-4 h-full items-stretch">
+                          {group.map((section, i) => (
+                            <div key={i} className="min-h-[120px]">
                               <FullSectionCard section={section} />
                             </div>
                           ))}
