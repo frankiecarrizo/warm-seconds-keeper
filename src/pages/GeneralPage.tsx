@@ -409,45 +409,45 @@ const GeneralPage = () => {
 
         {/* Stat cards */}
         {(() => {
-          const row1Cards = [
-            <Card key="courses" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
-                <p className="text-2xl font-bold text-foreground">{courses.length}</p>
-                <p className="text-xs text-muted-foreground">Cursos</p>
-              </CardContent>
-            </Card>,
-            <Card key="users" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <Users className="h-5 w-5 text-info mx-auto mb-1" />
-                <p className="text-2xl font-bold text-info">{usersSummary?.total || 0}</p>
-                <p className="text-xs text-muted-foreground">Usuarios</p>
-              </CardContent>
-            </Card>,
-            <Card key="active" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <UserCheck className="h-5 w-5 text-success mx-auto mb-1" />
-                <p className="text-2xl font-bold text-success">{usersSummary?.active || 0}</p>
-                <p className="text-xs text-muted-foreground">Activos</p>
-              </CardContent>
-            </Card>,
-            <Card key="suspended" className="glass-card">
-              <CardContent className="p-4 text-center">
-                <UserX className="h-5 w-5 text-warning mx-auto mb-1" />
-                <p className="text-2xl font-bold text-warning">{usersSummary?.suspended || 0}</p>
-                <p className="text-xs text-muted-foreground">Suspendidos</p>
-              </CardContent>
-            </Card>,
-            enrollmentLoading ? <StatSkeleton key="teachers-skel" index={4} /> : (
+          const row1Cards = enrollmentLoading
+            ? [0,1,2,3,4].map(i => <StatSkeleton key={`skel-r1-${i}`} index={i} />)
+            : [
+              <Card key="courses" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <BookOpen className="h-5 w-5 text-primary mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-foreground">{courses.length}</p>
+                  <p className="text-xs text-muted-foreground">Cursos</p>
+                </CardContent>
+              </Card>,
+              <Card key="users" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <Users className="h-5 w-5 text-info mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-info">{usersSummary?.total || 0}</p>
+                  <p className="text-xs text-muted-foreground">Usuarios</p>
+                </CardContent>
+              </Card>,
+              <Card key="active" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <UserCheck className="h-5 w-5 text-success mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-success">{usersSummary?.active || 0}</p>
+                  <p className="text-xs text-muted-foreground">Activos</p>
+                </CardContent>
+              </Card>,
+              <Card key="suspended" className="glass-card">
+                <CardContent className="p-4 text-center">
+                  <UserX className="h-5 w-5 text-warning mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-warning">{usersSummary?.suspended || 0}</p>
+                  <p className="text-xs text-muted-foreground">Suspendidos</p>
+                </CardContent>
+              </Card>,
               <Card key="teachers" className="glass-card">
                 <CardContent className="p-4 text-center">
                   <GraduationCap className="h-5 w-5 text-accent-foreground mx-auto mb-1" />
                   <p className="text-2xl font-bold text-accent-foreground">{stats.totalTeachers}</p>
                   <p className="text-xs text-muted-foreground">Docentes</p>
                 </CardContent>
-              </Card>
-            ),
-          ];
+              </Card>,
+            ];
 
           const row2Cards = enrollmentLoading
             ? [1,2,3,4,5].map(i => <StatSkeleton key={`skel-${i}`} index={i + 4} />)
