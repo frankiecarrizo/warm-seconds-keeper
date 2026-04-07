@@ -179,6 +179,16 @@ serve(async (req) => {
 
     let result: any;
 
+    const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+
+    const normalizeText = (value: string) =>
+      stripHtml(value)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+
     switch (action) {
       // ── Site info ──────────────────────────────────────────────
       case "get_site_info": {
@@ -878,16 +888,6 @@ serve(async (req) => {
         break;
       }
 
-
-      const stripHtml = (value: string) => value.replace(/<[^>]*>/g, "").trim();
-
-      const normalizeText = (value: string) =>
-        stripHtml(value)
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase();
 
       // ── Activity completion report (student x activity matrix) ──
       case "get_activity_completion_report": {
