@@ -25,7 +25,22 @@ export function MoodleConnectionProvider({ children }: { children: React.ReactNo
   const [isConnected, setIsConnected] = useState(() => !!localStorage.getItem("moodle-config"));
 
   const connect = useCallback((url: string, token: string) => {
-    const c = { moodleUrl: url.replace(/\/+$/, ""), moodleToken: token };
+    // Extract token from full URL if user pasted one
+    let cleanToken = token.trim();
+    try {
+      if (cleanToken.startsWith("http")) {
+        const parsed = new URL(cleanToken);
+        const wstoken = parsed.searchParams.get("wstoken");
+        if (wstoken) {
+          cleanToken = wstoken;
+          // Also extract moodleUrl from the pasted URL if user left url field as placeholder
+          if (!url || url === "https://tucampus.edu/moodle") {
+            url = `${parsed.protocol}//${parsed.host}${parsed.pathname.replace(/\/webservice\/rest\/server\.php$/, "")}`;
+          }
+        }
+      }
+    } catch { /* not a URL, use as-is */ }
+    const c = { moodleUrl: url.replace(/\/+$/, ""), moodleToken: cleanToken };
     setConfig(c);
     localStorage.setItem("moodle-config", JSON.stringify(c));
     setIsConnected(true);
