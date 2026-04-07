@@ -897,16 +897,22 @@ serve(async (req) => {
             }
           }
         }
-        console.log("certModules found:", JSON.stringify(certModules));
 
+        if (certModules.length === 0) {
+          result = [];
+          break;
+        }
+
+        // Try mod_customcert_get_issued_certificates first
         const allCerts: any[] = [];
+        let apiAvailable = true;
+
         for (const cert of certModules) {
           if (cert.type === "customcert") {
             try {
               const issued = await callMoodle("mod_customcert_get_issued_certificates", {
                 certificateid: String(cert.id),
               });
-              console.log(`issued for cert ${cert.id}:`, JSON.stringify(issued));
               for (const issue of (issued.issues || [])) {
                 let downloadUrl = "";
                 if (issue.fileurl) {
@@ -928,9 +934,36 @@ serve(async (req) => {
                   userId: issue.userid,
                 });
               }
-            } catch (e: any) {
-              console.log(`Error fetching issued certs for ${cert.id}:`, e?.message || JSON.stringify(e));
+            } catch {
+              apiAvailable = false;
             }
+          }
+        }
+
+        // Fallback: if API not available, get enrolled users and build cert entries per user
+        if (!apiAvailable && allCerts.length === 0) {
+          try {
+            const enrolled = await callMoodle("core_enrol_get_enrolled_users", {
+              courseid: String(courseId),
+            });
+            for (const cert of certModules) {
+              for (const user of (enrolled || [])) {
+                const downloadUrl = `${moodleUrl}/mod/customcert/view.php?id=${cert.cmid}&downloadown=1`;
+                allCerts.push({
+                  id: cert.id,
+                  cmid: cert.cmid,
+                  name: cert.name,
+                  type: cert.type,
+                  courseId,
+                  issued: null,
+                  downloadUrl,
+                  userName: user.fullname || `User ${user.id}`,
+                  userId: user.id,
+                });
+              }
+            }
+          } catch (e: any) {
+            console.log("Fallback enrolled users error:", e?.message);
           }
         }
 
