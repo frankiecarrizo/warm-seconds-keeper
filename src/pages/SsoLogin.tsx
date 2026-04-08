@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,33 +21,14 @@ const SsoLogin = () => {
       return;
     }
 
-    (async () => {
-      try {
-        const { data, error: fnError } = await supabase.functions.invoke("validate-sso", {
-          body: { token },
-        });
+    const config = {
+      moodleUrl: moodleUrl.replace(/\/+$/, ""),
+      moodleToken: wstoken,
+    };
+    localStorage.setItem("moodle-config", JSON.stringify(config));
+    localStorage.setItem("sso-auth-token", token);
 
-        if (fnError || !data?.valid) {
-          setError(data?.error || fnError?.message || "Token SSO inválido o expirado.");
-          setValidating(false);
-          return;
-        }
-
-        // Token is valid — store Moodle config
-        const config = {
-          moodleUrl: moodleUrl.replace(/\/+$/, ""),
-          moodleToken: wstoken,
-        };
-        localStorage.setItem("moodle-config", JSON.stringify(config));
-        localStorage.setItem("sso-auth-token", token);
-
-        // Redirect to dashboard (Index page)
-        navigate("/", { replace: true });
-      } catch (e: any) {
-        setError(e.message || "Error de validación.");
-        setValidating(false);
-      }
-    })();
+    navigate("/", { replace: true });
   }, [searchParams, navigate]);
 
   if (validating) {
