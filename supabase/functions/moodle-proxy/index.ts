@@ -5,6 +5,8 @@ const ALLOWED_ORIGIN_PATTERNS = [
   /^https?:\/\/localhost(:\d+)?$/,
   /^https:\/\/.*\.lovableproject\.com$/,
   /^https:\/\/.*\.lovable\.app$/,
+  /^https:\/\/qa\.campusvirtualfp\.com\.ar$/,
+  /^https:\/\/campuscivet\.ar\/campusvirtual3\/$/,
 ];
 
 function getCorsHeaders(req: Request) {
@@ -23,19 +25,15 @@ const COOKIE_NAME = "moodle_session";
 
 async function deriveKey(): Promise<CryptoKey> {
   const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-secret-key";
-  const keyMaterial = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    "PBKDF2",
-    false,
-    ["deriveKey"]
-  );
+  const keyMaterial = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), "PBKDF2", false, [
+    "deriveKey",
+  ]);
   return crypto.subtle.deriveKey(
     { name: "PBKDF2", salt: new TextEncoder().encode("moodle-session-salt"), iterations: 100000, hash: "SHA-256" },
     keyMaterial,
     { name: "AES-GCM", length: 256 },
     false,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -67,7 +65,7 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
     cookieHeader.split(";").map((c) => {
       const [k, ...v] = c.trim().split("=");
       return [k, v.join("=")];
-    })
+    }),
   );
 }
 
@@ -90,36 +88,33 @@ serve(async (req) => {
     if (action === "connect") {
       const { moodleUrl, moodleToken } = body;
       if (!moodleUrl || !moodleToken) {
-        return new Response(
-          JSON.stringify({ error: "Missing moodleUrl or moodleToken" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: "Missing moodleUrl or moodleToken" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
       const encrypted = await encryptConfig({ moodleUrl, moodleToken });
-      return new Response(
-        JSON.stringify({ success: true, session: encrypted }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ success: true, session: encrypted }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ── Disconnect: no-op on server side ──
     if (action === "disconnect") {
-      return new Response(
-        JSON.stringify({ success: true }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // ── For all other actions, read credentials from x-moodle-session header ──
     const sessionBlob = req.headers.get("x-moodle-session");
     if (!sessionBlob) {
-      return new Response(
-        JSON.stringify({ error: "SESSION_EXPIRED: No hay sesión activa. Reconectá." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "SESSION_EXPIRED: No hay sesión activa. Reconectá." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     let moodleUrl: string;
@@ -129,18 +124,15 @@ serve(async (req) => {
       moodleUrl = config.moodleUrl;
       moodleToken = config.moodleToken;
     } catch {
-      return new Response(
-        JSON.stringify({ error: "SESSION_INVALID: Sesión corrupta. Reconectá." }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "SESSION_INVALID: Sesión corrupta. Reconectá." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const baseUrl = `${moodleUrl}/webservice/rest/server.php`;
 
-    const callMoodle = async (
-      wsfunction: string,
-      extraParams: Record<string, string> = {}
-    ) => {
+    const callMoodle = async (wsfunction: string, extraParams: Record<string, string> = {}) => {
       const urlParams = new URLSearchParams({
         wstoken: moodleToken,
         wsfunction,
@@ -151,8 +143,7 @@ serve(async (req) => {
       const data = await response.json();
       if (data.exception) {
         const isAccessError =
-          data.errorcode === "accessexception" ||
-          (data.message || "").toLowerCase().includes("access");
+          data.errorcode === "accessexception" || (data.message || "").toLowerCase().includes("access");
         throw { message: data.message, status: isAccessError ? 403 : 500 };
       }
       return data;
@@ -180,10 +171,7 @@ serve(async (req) => {
 
     const tryDirectCertificateDownload = async (certUrl: string) => {
       const separator = certUrl.includes("?") ? "&" : "?";
-      const candidates = [
-        `${certUrl}${separator}token=${moodleToken}`,
-        `${certUrl}${separator}wstoken=${moodleToken}`,
-      ];
+      const candidates = [`${certUrl}${separator}token=${moodleToken}`, `${certUrl}${separator}wstoken=${moodleToken}`];
 
       for (const fullUrl of candidates) {
         const certResp = await fetch(fullUrl, { redirect: "follow" });
@@ -195,13 +183,13 @@ serve(async (req) => {
 
         if (certResp.url.includes("/login/index.php")) {
           return buildDownloadFailure(
-            "Moodle redirigió la descarga al login. Este certificado no acepta descarga directa con el token actual."
+            "Moodle redirigió la descarga al login. Este certificado no acepta descarga directa con el token actual.",
           );
         }
 
         if (contentType.includes("text/html")) {
           return buildDownloadFailure(
-            "Moodle devolvió una página HTML en lugar del PDF. La descarga directa no está habilitada para este certificado con el token actual."
+            "Moodle devolvió una página HTML en lugar del PDF. La descarga directa no está habilitada para este certificado con el token actual.",
           );
         }
 
@@ -226,13 +214,13 @@ serve(async (req) => {
 
         if (message.toLowerCase().includes("file downloading must be enabled")) {
           return buildDownloadFailure(
-            "El servicio web de Moodle no tiene habilitada la descarga de archivos para este token. Activá 'Files download' en el servicio del token para descargar certificados Custom Cert."
+            "El servicio web de Moodle no tiene habilitada la descarga de archivos para este token. Activá 'Files download' en el servicio del token para descargar certificados Custom Cert.",
           );
         }
 
         if (message.toLowerCase().includes("acceso")) {
           return buildDownloadFailure(
-            "El token de Moodle no tiene permisos para descargar este certificado Custom Cert."
+            "El token de Moodle no tiene permisos para descargar este certificado Custom Cert.",
           );
         }
 
@@ -245,7 +233,7 @@ serve(async (req) => {
 
       if (response.url.includes("/login/index.php") || contentType.includes("text/html")) {
         return buildDownloadFailure(
-          "Moodle redirigió la descarga del Custom Cert al login en lugar de devolver el PDF."
+          "Moodle redirigió la descarga del Custom Cert al login en lugar de devolver el PDF.",
         );
       }
 
@@ -257,7 +245,7 @@ serve(async (req) => {
     // 2. Fallback: calculate % of completed activities
     const getCompletionForUser = async (
       courseId: number,
-      userId: number
+      userId: number,
     ): Promise<{ completed: boolean; percentage: number; method: "criteria" | "activities" | "none" }> => {
       // Try official completion criteria first
       try {
@@ -282,7 +270,7 @@ serve(async (req) => {
           return { completed: false, percentage: 0, method: "none" };
         }
         const completedCount = statuses.filter(
-          (s: any) => s.state === 1 || s.state === 2 // 1=complete, 2=complete-pass
+          (s: any) => s.state === 1 || s.state === 2, // 1=complete, 2=complete-pass
         ).length;
         const pct = Math.round((completedCount / statuses.length) * 100);
         return { completed: pct === 100, percentage: pct, method: "activities" };
@@ -331,9 +319,7 @@ serve(async (req) => {
           } catch {}
         }
 
-        const users = allUsersList.filter(
-          (u: any) => u.id > 1 && u.username !== "guest"
-        );
+        const users = allUsersList.filter((u: any) => u.id > 1 && u.username !== "guest");
         result = {
           total: users.length,
           active: users.filter((u: any) => !u.suspended && !u.deleted).length,
@@ -452,7 +438,7 @@ serve(async (req) => {
                 completed: completion.completed,
                 completionPercentage: completion.percentage,
               };
-            })
+            }),
           );
           enriched.push(...results);
         }
@@ -500,7 +486,7 @@ serve(async (req) => {
         try {
           const allCourses = await callMoodle("core_course_get_courses");
           const userCourseIds = new Set(courses.map((c: any) => c.id));
-          
+
           // For each course not in the user's visible list, check enrollment
           for (const course of allCourses) {
             if (course.id === 1 || userCourseIds.has(course.id)) continue;
@@ -756,7 +742,7 @@ serve(async (req) => {
                 completionPercentage: completionResult.percentage,
                 completionMethod: completionResult.method,
               };
-            })
+            }),
           );
           allStudentsBasic.push(...results);
         }
@@ -868,7 +854,13 @@ serve(async (req) => {
             for (let si = 0; si < studentsArr.length; si += compBatchSize) {
               const batch = studentsArr.slice(si, si + compBatchSize);
               const results = await Promise.all(
-                batch.map((s: any) => getCompletionForUser(cid, s.id).catch(() => ({ completed: false, percentage: 0, method: "none" as const })))
+                batch.map((s: any) =>
+                  getCompletionForUser(cid, s.id).catch(() => ({
+                    completed: false,
+                    percentage: 0,
+                    method: "none" as const,
+                  })),
+                ),
               );
               for (const comp of results) {
                 checkedCount++;
@@ -933,7 +925,7 @@ serve(async (req) => {
           if (Array.isArray(batchResult)) {
             for (const r of batchResult) {
               if (r.errormessage) {
-                errors.push(`User ${r.touserid || 'unknown'}: ${r.errormessage}`);
+                errors.push(`User ${r.touserid || "unknown"}: ${r.errormessage}`);
               }
             }
             allResults.push(...batchResult);
@@ -987,13 +979,13 @@ serve(async (req) => {
         // Use report_log_get_log_records to fetch login events
         // We'll get logs for the last 12 months
         const now = Math.floor(Date.now() / 1000);
-        const twelveMonthsAgo = now - (365 * 24 * 60 * 60);
-        
+        const twelveMonthsAgo = now - 365 * 24 * 60 * 60;
+
         let allLogs: any[] = [];
         let page = 0;
         const perPage = 500;
         let hasMore = true;
-        
+
         while (hasMore) {
           try {
             const logsData = await callMoodle("report_log_get_log_records", {
@@ -1004,10 +996,10 @@ serve(async (req) => {
               perpage: String(perPage),
               orderby: "timecreated DESC",
             });
-            
+
             const records = logsData?.data || [];
             allLogs.push(...records);
-            
+
             if (records.length < perPage) {
               hasMore = false;
             } else {
@@ -1018,7 +1010,7 @@ serve(async (req) => {
           } catch (e: any) {
             // If report_log is not available, try fallback with user lastaccess
             console.warn("report_log not available, using fallback:", e.message);
-            
+
             // Fallback: get all users with their firstaccess/lastaccess
             let users: any[] = [];
             try {
@@ -1028,7 +1020,7 @@ serve(async (req) => {
               });
               users = (res.users || []).filter((u: any) => u.id > 1 && u.username !== "guest" && !u.deleted);
             } catch {}
-            
+
             // Build synthetic login entries from firstaccess and lastaccess
             allLogs = users
               .filter((u: any) => u.lastaccess > 0)
@@ -1036,18 +1028,18 @@ serve(async (req) => {
                 timecreated: u.lastaccess,
                 userid: u.id,
               }));
-            
+
             // Also add firstaccess as separate entry if different
             users.forEach((u: any) => {
               if (u.firstaccess > 0 && u.firstaccess !== u.lastaccess) {
                 allLogs.push({ timecreated: u.firstaccess, userid: u.id });
               }
             });
-            
+
             hasMore = false;
           }
         }
-        
+
         // Return raw timestamps for client-side aggregation
         result = allLogs.map((l: any) => ({
           timecreated: l.timecreated,
@@ -1056,9 +1048,8 @@ serve(async (req) => {
         break;
       }
 
-
       // ── Activity completion report (student x activity matrix) ──
-case "get_activity_completion_report": {
+      case "get_activity_completion_report": {
         const courseId = params?.courseId;
         if (!courseId) throw { message: "Missing courseId", status: 400 };
 
@@ -1113,7 +1104,7 @@ case "get_activity_completion_report": {
             });
             const gradeItems = gradeReport?.usergrades?.[0]?.gradeitems || [];
             const statusMap: Record<number, number> = Object.fromEntries(
-              quizActivities.map((activity) => [activity.cmid, 0])
+              quizActivities.map((activity) => [activity.cmid, 0]),
             );
 
             for (const item of gradeItems) {
@@ -1123,8 +1114,10 @@ case "get_activity_completion_report": {
               if (!isQuiz || !quizActivity) continue;
 
               const hasGrade =
-                item.graderaw !== null && item.graderaw !== undefined ||
-                (typeof item.gradeformatted === "string" && item.gradeformatted.trim() !== "" && item.gradeformatted.trim() !== "-");
+                (item.graderaw !== null && item.graderaw !== undefined) ||
+                (typeof item.gradeformatted === "string" &&
+                  item.gradeformatted.trim() !== "" &&
+                  item.gradeformatted.trim() !== "-");
 
               statusMap[quizActivity.cmid] = hasGrade ? 1 : 0;
             }
@@ -1138,7 +1131,7 @@ case "get_activity_completion_report": {
         const buildQuizStatusMapFromAttempts = async (userId: number) => {
           const quizActivities = getQuizActivities();
           const statusMap: Record<number, number> = Object.fromEntries(
-            quizActivities.map((activity) => [activity.cmid, 0])
+            quizActivities.map((activity) => [activity.cmid, 0]),
           );
 
           for (let i = 0; i < quizActivities.length; i += 5) {
@@ -1155,11 +1148,13 @@ case "get_activity_completion_report": {
                 } catch {
                   return { activity, attempts: [] };
                 }
-              })
+              }),
             );
 
             for (const { activity, attempts } of batchResults) {
-              const hasFinishedAttempt = attempts.some((attempt: any) => attempt?.state === "finished" || Number(attempt?.timefinish || 0) > 0);
+              const hasFinishedAttempt = attempts.some(
+                (attempt: any) => attempt?.state === "finished" || Number(attempt?.timefinish || 0) > 0,
+              );
               statusMap[activity.cmid] = hasFinishedAttempt ? 1 : 0;
             }
           }
@@ -1206,14 +1201,16 @@ case "get_activity_completion_report": {
               const quizId = Number(quiz.id || 0);
               if (!quizId) continue;
 
-              const matchedModule = Array.from(moduleMap.values()).find((activity) =>
-                activity.modname === "quiz" && (
-                  activity.quizid === quizId || normalizeText(activity.name) === normalizeText(quiz.name || "")
-                )
+              const matchedModule = Array.from(moduleMap.values()).find(
+                (activity) =>
+                  activity.modname === "quiz" &&
+                  (activity.quizid === quizId || normalizeText(activity.name) === normalizeText(quiz.name || "")),
               );
 
               pushActivity({
-                cmid: Number(quiz.coursemodule || quiz.coursemoduleid || matchedModule?.cmid || synthesizeQuizCmid(quizId)),
+                cmid: Number(
+                  quiz.coursemodule || quiz.coursemoduleid || matchedModule?.cmid || synthesizeQuizCmid(quizId),
+                ),
                 name: quiz.name || matchedModule?.name || `Cuestionario ${quizId}`,
                 modname: "quiz",
                 quizid: quizId,
@@ -1262,7 +1259,7 @@ case "get_activity_completion_report": {
                   cmid: Number(st.cmid),
                   name: st.name || `Actividad ${st.cmid}`,
                   modname: st.modname || "unknown",
-                }
+                },
               );
             }
           } catch {
@@ -1293,7 +1290,7 @@ case "get_activity_completion_report": {
         }
 
         const activityByNormalizedName = new Map(
-          activities.map((activity) => [normalizeText(activity.name), activity.cmid])
+          activities.map((activity) => [normalizeText(activity.name), activity.cmid]),
         );
 
         const rows: any[] = [];
@@ -1325,7 +1322,7 @@ case "get_activity_completion_report": {
 
                 const completionEntries = courseCompletion?.completionstatus?.completions || [];
                 const statusMap: Record<number, number> = Object.fromEntries(
-                  activities.map((activity) => [activity.cmid, 0])
+                  activities.map((activity) => [activity.cmid, 0]),
                 );
                 let matchedEntries = 0;
 
@@ -1356,7 +1353,7 @@ case "get_activity_completion_report": {
               }
 
               return formatRow(student, {});
-            })
+            }),
           );
           rows.push(...results);
         }
@@ -1436,7 +1433,7 @@ case "get_activity_completion_report": {
                   courseTotalMax: 0,
                 };
               }
-            })
+            }),
           );
           rows.push(...results);
         }
@@ -1477,7 +1474,7 @@ case "get_activity_completion_report": {
           const certModules: any[] = [];
           const seenCertIds = new Set<string>();
           for (const section of contents) {
-            for (const mod of (section.modules || [])) {
+            for (const mod of section.modules || []) {
               if (mod.modname === "customcert" || mod.modname === "certificate") {
                 const key = `${mod.modname}-${mod.instance}`;
                 if (!seenCertIds.has(key)) {
@@ -1493,11 +1490,16 @@ case "get_activity_completion_report": {
               const customcerts = await callMoodle("mod_customcert_get_certificates_by_courses", {
                 "courseids[0]": String(courseId),
               });
-              for (const cert of (customcerts?.customcerts || [])) {
+              for (const cert of customcerts?.customcerts || []) {
                 const key = `customcert-${cert.id}`;
                 if (!seenCertIds.has(key)) {
                   seenCertIds.add(key);
-                  certModules.push({ id: cert.id, cmid: cert.coursemodule || cert.cmid || 0, name: cert.name, type: "customcert" });
+                  certModules.push({
+                    id: cert.id,
+                    cmid: cert.coursemodule || cert.cmid || 0,
+                    name: cert.name,
+                    type: "customcert",
+                  });
                 }
               }
             } catch (e: any) {
@@ -1516,7 +1518,12 @@ case "get_activity_completion_report": {
                     const key = `${item.itemmodule}-${item.iteminstance}`;
                     if (!seenCertIds.has(key)) {
                       seenCertIds.add(key);
-                      certModules.push({ id: item.iteminstance, cmid: item.cmid || 0, name: item.itemname || "Certificado", type: item.itemmodule });
+                      certModules.push({
+                        id: item.iteminstance,
+                        cmid: item.cmid || 0,
+                        name: item.itemname || "Certificado",
+                        type: item.itemmodule,
+                      });
                     }
                   }
                 }
@@ -1538,7 +1545,7 @@ case "get_activity_completion_report": {
                 const issued = await callMoodle("mod_customcert_get_issued_certificates", {
                   certificateid: String(cert.id),
                 });
-                for (const issue of (issued.issues || [])) {
+                for (const issue of issued.issues || []) {
                   let downloadUrl = "";
                   if (issue.fileurl) {
                     downloadUrl = issue.fileurl;
@@ -1571,7 +1578,7 @@ case "get_activity_completion_report": {
                 courseid: String(courseId),
               });
               for (const cert of certModules) {
-                for (const user of (enrolled || [])) {
+                for (const user of enrolled || []) {
                   const downloadUrl = `${moodleUrl}/mod/customcert/view.php?id=${cert.cmid}&downloadown=1`;
                   allCerts.push({
                     id: cert.id,
@@ -1605,7 +1612,10 @@ case "get_activity_completion_report": {
           if (!result.downloadable) {
             // Try direct URL with token
             const fallback = await tryDirectCertificateDownload(certUrl);
-            if (fallback.downloadable) { result = fallback; break; }
+            if (fallback.downloadable) {
+              result = fallback;
+              break;
+            }
             // Try pluginfile.php with different context patterns
             const pluginUrls = [
               `${moodleUrl}/webservice/pluginfile.php/1/mod_customcert/issues/${certificateId}/${userId}/certificate.pdf`,
@@ -1614,7 +1624,10 @@ case "get_activity_completion_report": {
             ];
             for (const pUrl of pluginUrls) {
               const attempt = await tryDirectCertificateDownload(pUrl);
-              if (attempt.downloadable) { result = attempt; break; }
+              if (attempt.downloadable) {
+                result = attempt;
+                break;
+              }
             }
             if (result.downloadable) break;
           }
@@ -1626,19 +1639,19 @@ case "get_activity_completion_report": {
       }
 
       default:
-        return new Response(
-          JSON.stringify({ error: `Unknown action: ${action}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
     }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
-    return new Response(
-      JSON.stringify({ error: e?.message || "Internal error" }),
-      { status: e?.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: e?.message || "Internal error" }), {
+      status: e?.status || 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
