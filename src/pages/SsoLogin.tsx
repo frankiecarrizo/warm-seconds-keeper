@@ -3,10 +3,12 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useMoodleConnection } from "@/hooks/use-moodle-connection";
 
 const SsoLogin = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { connect } = useMoodleConnection();
   const [error, setError] = useState<string | null>(null);
   const [validating, setValidating] = useState(true);
 
@@ -21,15 +23,16 @@ const SsoLogin = () => {
       return;
     }
 
-    const config = {
-      moodleUrl: moodleUrl.replace(/\/+$/, ""),
-      moodleToken: wstoken,
-    };
-    localStorage.setItem("moodle-config", JSON.stringify(config));
+    // Save SSO token for reference
     localStorage.setItem("sso-auth-token", token);
 
+    // Use the same connect flow as manual login
+    const cleanUrl = moodleUrl.replace(/\/+$/, "");
+    connect(cleanUrl, wstoken);
+
+    // Navigate after triggering connect
     navigate("/", { replace: true });
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, connect]);
 
   if (validating) {
     return (
