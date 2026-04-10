@@ -219,6 +219,10 @@ export const getSiteInfo = async () => {
   return callProxy("get_site_info");
 };
 
+export const getGeneralData = async () => {
+  return callProxy("get_general_data");
+};
+
 export const getQuizAttemptReview = async (attemptId: number) => {
   return callProxy("get_quiz_attempt_review", { attemptId });
 };

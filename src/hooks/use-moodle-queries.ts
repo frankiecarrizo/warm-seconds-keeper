@@ -1,14 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  getSiteInfo,
-  getAllCourses,
-  getCategories,
-  getUsersSummary,
+  getGeneralData,
   getCoursesEnrollmentSummary,
   getLoginLogs,
   SiteInfo,
   BasicCourse,
-  MoodleCategory,
   CourseEnrollmentSummary,
 } from "@/lib/moodle-api";
 import { cacheSiteInfo } from "@/lib/export-utils";
@@ -21,52 +17,28 @@ export interface LoginLogEntry {
   userid: number;
 }
 
-// ─── Base data: siteInfo + courses + categories + usersSummary ───
+// ─── Base data: siteInfo + courses + categories + usersSummary (single plugin call) ───
 export function useGeneralBaseData(enabled: boolean) {
   const { disconnect } = useMoodleConnection();
 
   const query = useQuery({
     queryKey: ["moodle", "general-base"],
     queryFn: async () => {
-      const [siteInfo, courses, categories, usersSummary] = await Promise.all([
-        getSiteInfo().catch((e: any) => {
-          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
-          console.warn("getSiteInfo failed:", e.message);
-          return null;
-        }),
-        getAllCourses().catch((e: any) => {
-          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
-          console.warn("getAllCourses failed:", e.message);
-          return [] as BasicCourse[];
-        }),
-        getCategories().catch((e: any) => {
-          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
-          console.warn("getCategories failed:", e.message);
-          return [] as MoodleCategory[];
-        }),
-        getUsersSummary().catch((e: any) => {
-          if (e.message?.startsWith("TOKEN_INVALID")) throw e;
-          return null;
-        }),
-      ]);
+      const data = await getGeneralData();
 
-      if (!siteInfo && courses.length === 0) {
-        throw new Error("ACCESS_DENIED: El token no tiene permisos suficientes.");
-      }
-
-      const fallbackSiteInfo: SiteInfo = siteInfo || {
+      const siteInfo: SiteInfo = data.siteInfo || {
         sitename: "", siteurl: "",
         username: "", fullname: "", userid: 0, release: "", version: "",
       };
 
-      const filteredCourses = courses.filter((c: any) => c.id !== 1);
-      cacheSiteInfo(fallbackSiteInfo);
+      const courses = (data.courses || []).filter((c: any) => c.id !== 1);
+      cacheSiteInfo(siteInfo);
 
       return {
-        siteInfo: fallbackSiteInfo,
-        courses: filteredCourses,
-        categories,
-        usersSummary,
+        siteInfo,
+        courses,
+        categories: data.categories || [],
+        usersSummary: data.usersSummary || null,
       };
     },
     enabled,
@@ -80,7 +52,6 @@ export function useGeneralBaseData(enabled: boolean) {
     meta: { disconnect },
   });
 
-  // Auto-disconnect on token errors
   useEffect(() => {
     if (query.error?.message?.startsWith("TOKEN_INVALID")) {
       toast.error("El token de Moodle es inválido o expiró. Por favor, reconectá.");
