@@ -198,13 +198,14 @@ serve(async (req) => {
 
     switch (action) {
       // ══════════════════════════════════════════════════════════════
-      // PLUGIN ENDPOINTS (local_dashboard) — Direct SQL queries
+      // PLUGIN ENDPOINTS (local_lovableconnector) — Direct SQL queries
       // Transforms plugin output → frontend-expected format
       // ══════════════════════════════════════════════════════════════
 
       // ── General data ──
       case "get_general_data": {
         const raw = await callMoodle("local_dashboard_get_general_data");
+        console.log("[get_general_data] raw usersSummary:", JSON.stringify(raw.usersSummary));
         const us = raw.usersSummary || {};
         result = {
           siteInfo: {
@@ -226,6 +227,7 @@ serve(async (req) => {
             active: us.activeUsers ?? us.active ?? 0,
             suspended: us.suspendedUsers ?? us.suspended ?? 0,
             deleted: us.deletedUsers ?? us.deleted ?? 0,
+            totalTeachers: us.totalTeachers ?? 0,
           },
         };
         break;
@@ -246,6 +248,7 @@ serve(async (req) => {
           active: us2.activeUsers ?? us2.active ?? 0,
           suspended: us2.suspendedUsers ?? us2.suspended ?? 0,
           deleted: us2.deletedUsers ?? us2.deleted ?? 0,
+          totalTeachers: us2.totalTeachers ?? 0,
         };
         break;
       }
@@ -273,21 +276,44 @@ serve(async (req) => {
         const rawEnroll = await callMoodle("local_dashboard_get_enrollment_summaries", {
           courseids: JSON.stringify(courseIds),
         });
-        result = (Array.isArray(rawEnroll) ? rawEnroll : []).map((e: any) => ({
-          courseId: e.courseId,
-          totalStudents: e.enrolledCount ?? 0,
-          totalTeachers: 0,
-          completed: e.completedCount ?? 0,
-          checkedStudents: e.enrolledCount ?? 0,
-          neverAccessed: e.neverAccessCount ?? 0,
-          teacherIds: [],
-        }));
+        console.log("[enrollment] sample raw:", JSON.stringify((Array.isArray(rawEnroll) ? rawEnroll : []).slice(0, 2)));
+        result = (Array.isArray(rawEnroll) ? rawEnroll : []).map((e: any) => {
+          // Parse teacherIds - plugin sends as JSON string
+          let teacherIds: number[] = [];
+          try {
+            if (typeof e.teacherIds === 'string') {
+              teacherIds = JSON.parse(e.teacherIds);
+            } else if (Array.isArray(e.teacherIds)) {
+              teacherIds = e.teacherIds;
+            }
+          } catch {}
+
+          return {
+            courseId: e.courseId,
+            totalStudents: e.studentCount ?? e.enrolledCount ?? 0,
+            totalTeachers: e.teacherCount ?? 0,
+            completed: e.completedCount ?? 0,
+            checkedStudents: e.studentCount ?? e.enrolledCount ?? 0,
+            neverAccessed: e.neverAccessCount ?? 0,
+            teacherIds,
+          };
+        });
         break;
       }
 
       // ── Login logs ──
       case "get_login_logs": {
-        result = await callMoodle("local_dashboard_get_login_logs");
+        const rawLogs = await callMoodle("local_dashboard_get_login_logs");
+        console.log("[login_logs] type:", typeof rawLogs, "isArray:", Array.isArray(rawLogs), "length:", Array.isArray(rawLogs) ? rawLogs.length : 'N/A');
+        if (Array.isArray(rawLogs) && rawLogs.length > 0) {
+          console.log("[login_logs] sample:", JSON.stringify(rawLogs[0]));
+        }
+        // Ensure it's a flat array with numeric timecreated
+        const logsArray = Array.isArray(rawLogs) ? rawLogs : (rawLogs?.logs || rawLogs?.data || []);
+        result = logsArray.map((l: any) => ({
+          timecreated: typeof l.timecreated === 'number' ? l.timecreated : parseInt(l.timecreated, 10) || 0,
+          userid: typeof l.userid === 'number' ? l.userid : parseInt(l.userid, 10) || 0,
+        }));
         break;
       }
 
@@ -299,22 +325,32 @@ serve(async (req) => {
           courseid: String(courseId),
         });
         const enrolled = rawCourse.enrolledUsers || [];
-        // Determine roles heuristically: users with no grade item and no completion = likely teacher
-        // For now treat all as students since plugin doesn't distinguish roles
-        const students = enrolled.map((u: any) => ({
-          id: u.id,
-          fullname: u.fullname,
-          email: u.email,
-          lastaccess: u.lastcourseaccess || u.lastaccess || 0,
-          completed: u.completed === 1,
-          completionPercentage: u.completed === 1 ? 100 : 0,
-          completionMethod: u.completed === 1 ? "criteria" : "none",
-          gradeRaw: u.grade ?? null,
-          gradeMax: u.grademax ?? 100,
-          gradeFormatted: u.grade != null ? `${Math.round(u.grade)}/${Math.round(u.grademax || 100)}` : "—",
-          gradeItems: [],
-          quizAttempts: [],
-        }));
+        const teachersRaw = rawCourse.teachers || [];
+
+        // Separate students from teachers using isTeacher flag
+        const teacherIdSet = new Set<number>(teachersRaw.map((t: any) => t.id));
+        // Also check isTeacher field from plugin
+        for (const u of enrolled) {
+          if (u.isTeacher === 1) teacherIdSet.add(u.id);
+        }
+
+        const students = enrolled
+          .filter((u: any) => !teacherIdSet.has(u.id))
+          .map((u: any) => ({
+            id: u.id,
+            fullname: u.fullname,
+            email: u.email,
+            lastaccess: u.lastcourseaccess || u.lastaccess || 0,
+            completed: u.completed === 1,
+            completionPercentage: u.completed === 1 ? 100 : 0,
+            completionMethod: u.completed === 1 ? "criteria" : "none",
+            gradeRaw: u.grade ?? null,
+            gradeMax: u.grademax ?? 100,
+            gradeFormatted: u.grade != null ? `${Math.round(u.grade)}/${Math.round(u.grademax || 100)}` : "—",
+            gradeItems: [],
+            quizAttempts: [],
+          }));
+
         // Attach quiz attempts to students
         const quizMap = new Map<number, any[]>();
         const quizNames = new Map<number, string>();
@@ -336,24 +372,36 @@ serve(async (req) => {
             attempts,
           }));
         }
-        const allBasic = enrolled.map((u: any) => ({
-          id: u.id,
-          fullname: u.fullname,
-          email: u.email,
-          lastaccess: u.lastcourseaccess || u.lastaccess || 0,
-          completed: u.completed === 1,
-        }));
+
+        const allBasic = enrolled
+          .filter((u: any) => !teacherIdSet.has(u.id))
+          .map((u: any) => ({
+            id: u.id,
+            fullname: u.fullname,
+            email: u.email,
+            lastaccess: u.lastcourseaccess || u.lastaccess || 0,
+            completed: u.completed === 1,
+          }));
+
         const quizList = Array.from(quizNames.entries()).map(([id, name]) => ({ id, name }));
-        const neverAccessedCount = enrolled.filter((u: any) => !u.lastcourseaccess && !u.lastaccess).length;
+        const neverAccessedCount = enrolled.filter((u: any) => !teacherIdSet.has(u.id) && !u.lastcourseaccess && !u.lastaccess).length;
+
+        // Transform teachers
+        const teachers = teachersRaw.map((t: any) => ({
+          id: t.id,
+          fullname: t.fullname,
+          roles: typeof t.roles === 'string' ? [t.roles] : (t.roles || []),
+        }));
+
         result = {
           totalEnrolled: enrolled.length,
-          totalStudents: enrolled.length,
-          totalTeachers: 0,
+          totalStudents: students.length,
+          totalTeachers: teacherIdSet.size,
           neverAccessed: neverAccessedCount,
           students,
           allStudentsBasic: allBasic,
           quizzes: quizList,
-          teachers: [],
+          teachers,
         };
         break;
       }
@@ -375,6 +423,44 @@ serve(async (req) => {
             byQuiz.get(a.quiz)!.push(a);
             qNames.set(a.quiz, a.quizname);
           }
+
+          // Parse roles from JSON string
+          let roles: string[] = [];
+          try {
+            if (typeof c.roles === 'string') {
+              roles = JSON.parse(c.roles);
+            } else if (Array.isArray(c.roles)) {
+              roles = c.roles;
+            }
+          } catch {}
+
+          // Map grade items from plugin
+          const gradeItems = (c.gradeItems || []).map((gi: any) => ({
+            itemname: gi.itemname || gi.itemmodule || 'Sin nombre',
+            itemmodule: gi.itemmodule || '',
+            grademax: gi.grademax ?? 100,
+            finalgrade: gi.finalgrade,
+          }));
+
+          // Build grades array for compatibility
+          const grades = c.grade != null
+            ? [{ finalgrade: c.grade, grademax: c.grademax || 100, itemtype: 'course' }, ...gradeItems.map((gi: any) => ({
+                finalgrade: gi.finalgrade,
+                grademax: gi.grademax,
+                itemtype: 'mod',
+                itemname: gi.itemname,
+                itemmodule: gi.itemmodule,
+              }))]
+            : gradeItems.length > 0
+              ? gradeItems.map((gi: any) => ({
+                  finalgrade: gi.finalgrade,
+                  grademax: gi.grademax,
+                  itemtype: 'mod',
+                  itemname: gi.itemname,
+                  itemmodule: gi.itemmodule,
+                }))
+              : null;
+
           return {
             id: c.id,
             shortname: c.shortname,
@@ -383,17 +469,17 @@ serve(async (req) => {
             completed: c.completed === 1,
             completionPercentage: c.completed === 1 ? 100 : 0,
             completionMethod: c.completed === 1 ? "criteria" : "none",
-            startdate: 0,
-            enddate: 0,
+            startdate: c.startdate || 0,
+            enddate: c.enddate || 0,
             lastaccess: c.lastaccess || 0,
-            grades: c.grade != null ? [{ finalgrade: c.grade, grademax: c.grademax || 100 }] : null,
+            grades,
             completion: null,
             quizAttempts: Array.from(byQuiz.entries()).map(([qid, attempts]) => ({
               quizName: qNames.get(qid) || `Quiz ${qid}`,
               quizId: qid,
               attempts,
             })),
-            roles: [],
+            roles,
           };
         });
         result = {
@@ -417,9 +503,39 @@ serve(async (req) => {
       case "get_activity_completion_report": {
         const courseId4 = params?.courseId;
         if (!courseId4) throw { message: "Missing courseId", status: 400 };
-        result = await callMoodle("local_dashboard_get_activity_completion", {
+        const rawAC = await callMoodle("local_dashboard_get_activity_completion", {
           courseid: String(courseId4),
         });
+        console.log("[activity_completion] activities:", (rawAC.activities || []).length, "students:", (rawAC.students || []).length);
+
+        // Transform: plugin sends completions as JSON string per student
+        const acStudents = (rawAC.students || []).map((s: any) => {
+          let completions: Record<number, number> = {};
+          try {
+            if (typeof s.completions === 'string') {
+              const parsed = JSON.parse(s.completions);
+              // Convert string keys to numbers
+              for (const [k, v] of Object.entries(parsed)) {
+                completions[parseInt(k, 10)] = typeof v === 'number' ? v : parseInt(v as string, 10) || 0;
+              }
+            } else if (typeof s.completions === 'object') {
+              completions = s.completions;
+            }
+          } catch (e) {
+            console.error("[activity_completion] Failed to parse completions for student", s.id, e);
+          }
+          return {
+            id: s.id,
+            fullname: s.fullname,
+            email: s.email,
+            completions,
+          };
+        });
+
+        result = {
+          activities: rawAC.activities || [],
+          students: acStudents,
+        };
         break;
       }
 
@@ -427,9 +543,47 @@ serve(async (req) => {
       case "get_grader_report": {
         const courseId5 = params?.courseId;
         if (!courseId5) throw { message: "Missing courseId", status: 400 };
-        result = await callMoodle("local_dashboard_get_grader_report", {
+        const rawGR = await callMoodle("local_dashboard_get_grader_report", {
           courseid: String(courseId5),
         });
+        console.log("[grader_report] gradeItems:", (rawGR.gradeItems || []).length, "students:", (rawGR.students || []).length);
+
+        // Transform: plugin sends grades as JSON string per student
+        const grStudents = (rawGR.students || []).map((s: any) => {
+          let grades: Record<number, { grade: number | null; grademax: number }> = {};
+          try {
+            if (typeof s.grades === 'string') {
+              const parsed = JSON.parse(s.grades);
+              // Each value is also a JSON string: '{"grade":85,"grademax":100}'
+              for (const [k, v] of Object.entries(parsed)) {
+                const itemId = parseInt(k, 10);
+                if (typeof v === 'string') {
+                  const gradeObj = JSON.parse(v);
+                  grades[itemId] = { grade: gradeObj.grade, grademax: gradeObj.grademax };
+                } else if (typeof v === 'object' && v !== null) {
+                  grades[itemId] = v as { grade: number | null; grademax: number };
+                }
+              }
+            } else if (typeof s.grades === 'object') {
+              grades = s.grades;
+            }
+          } catch (e) {
+            console.error("[grader_report] Failed to parse grades for student", s.id, e);
+          }
+          return {
+            id: s.id,
+            fullname: s.fullname,
+            email: s.email,
+            grades,
+            courseTotal: s.courseTotal ?? null,
+            courseTotalMax: s.courseTotalMax ?? 100,
+          };
+        });
+
+        result = {
+          gradeItems: rawGR.gradeItems || [],
+          students: grStudents,
+        };
         break;
       }
 
@@ -571,15 +725,28 @@ serve(async (req) => {
         let allCerts: any[] = [];
         let pluginAvailable = false;
         try {
-          const pluginResult = await callMoodle("local_certapi_get_course_certificates", {
-            courseId: String(courseId),
+          const pluginResult = await callMoodle("local_dashboard_get_course_certificates", {
+            courseid: String(courseId),
           });
           if (Array.isArray(pluginResult)) {
             pluginAvailable = true;
             allCerts = pluginResult;
           }
         } catch (e: any) {
-          console.log("local_certapi plugin not available, using fallback:", e?.message);
+          console.log("local_dashboard_get_course_certificates not available, using fallback:", e?.message);
+        }
+
+        if (!pluginAvailable) {
+          // Fallback: use local_certapi or core APIs
+          try {
+            const pluginResult2 = await callMoodle("local_certapi_get_course_certificates", {
+              courseId: String(courseId),
+            });
+            if (Array.isArray(pluginResult2)) {
+              pluginAvailable = true;
+              allCerts = pluginResult2;
+            }
+          } catch {}
         }
 
         if (!pluginAvailable) {
@@ -639,9 +806,9 @@ serve(async (req) => {
           }
           if (!apiAvailable && allCerts.length === 0) {
             try {
-              const enrolled = await callMoodle("core_enrol_get_enrolled_users", { courseid: String(courseId) });
+              const enrolled2 = await callMoodle("core_enrol_get_enrolled_users", { courseid: String(courseId) });
               for (const cert of certModules) {
-                for (const user of enrolled || []) {
+                for (const user of enrolled2 || []) {
                   allCerts.push({
                     id: cert.id, cmid: cert.cmid, name: cert.name, type: cert.type,
                     courseId, issued: null, downloadUrl: `${moodleUrl}/mod/customcert/view.php?id=${cert.cmid}&downloadown=1`,
