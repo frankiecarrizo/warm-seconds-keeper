@@ -199,11 +199,35 @@ serve(async (req) => {
     switch (action) {
       // ══════════════════════════════════════════════════════════════
       // PLUGIN ENDPOINTS (local_dashboard) — Direct SQL queries
+      // Transforms plugin output → frontend-expected format
       // ══════════════════════════════════════════════════════════════
 
-      // ── General data (site info + courses + categories + users summary) ──
+      // ── General data ──
       case "get_general_data": {
-        result = await callMoodle("local_dashboard_get_general_data");
+        const raw = await callMoodle("local_dashboard_get_general_data");
+        const us = raw.usersSummary || {};
+        result = {
+          siteInfo: {
+            sitename: raw.siteInfo?.sitename || "",
+            siteurl: raw.siteInfo?.siteurl || "",
+            username: "",
+            fullname: "",
+            userid: 0,
+            release: raw.siteInfo?.release || "",
+            version: raw.siteInfo?.release || "",
+          },
+          courses: (raw.courses || []).map((c: any) => ({
+            ...c,
+            categoryid: c.categoryid ?? c.category ?? 0,
+          })),
+          categories: raw.categories || [],
+          usersSummary: {
+            total: us.totalUsers ?? us.total ?? 0,
+            active: us.activeUsers ?? us.active ?? 0,
+            suspended: us.suspendedUsers ?? us.suspended ?? 0,
+            deleted: us.deletedUsers ?? us.deleted ?? 0,
+          },
+        };
         break;
       }
 
@@ -216,30 +240,48 @@ serve(async (req) => {
       // ── Users summary ──
       case "get_users_summary": {
         const general = await callMoodle("local_dashboard_get_general_data");
-        result = general.usersSummary;
+        const us2 = general.usersSummary || {};
+        result = {
+          total: us2.totalUsers ?? us2.total ?? 0,
+          active: us2.activeUsers ?? us2.active ?? 0,
+          suspended: us2.suspendedUsers ?? us2.suspended ?? 0,
+          deleted: us2.deletedUsers ?? us2.deleted ?? 0,
+        };
         break;
       }
 
       // ── Categories ──
       case "get_categories": {
-        const general = await callMoodle("local_dashboard_get_general_data");
-        result = general.categories;
+        const general2 = await callMoodle("local_dashboard_get_general_data");
+        result = general2.categories;
         break;
       }
 
       // ── All courses ──
       case "get_all_courses": {
-        const general = await callMoodle("local_dashboard_get_general_data");
-        result = general.courses;
+        const general3 = await callMoodle("local_dashboard_get_general_data");
+        result = (general3.courses || []).map((c: any) => ({
+          ...c,
+          categoryid: c.categoryid ?? c.category ?? 0,
+        }));
         break;
       }
 
-      // ── Enrollment summaries (batched via plugin) ──
+      // ── Enrollment summaries (transform plugin format → frontend format) ──
       case "get_courses_enrollment_summary": {
         const courseIds: number[] = params?.courseIds || [];
-        result = await callMoodle("local_dashboard_get_enrollment_summaries", {
+        const rawEnroll = await callMoodle("local_dashboard_get_enrollment_summaries", {
           courseids: JSON.stringify(courseIds),
         });
+        result = (Array.isArray(rawEnroll) ? rawEnroll : []).map((e: any) => ({
+          courseId: e.courseId,
+          totalStudents: e.enrolledCount ?? 0,
+          totalTeachers: 0,
+          completed: e.completedCount ?? 0,
+          checkedStudents: e.enrolledCount ?? 0,
+          neverAccessed: e.neverAccessCount ?? 0,
+          teacherIds: [],
+        }));
         break;
       }
 
@@ -249,42 +291,144 @@ serve(async (req) => {
         break;
       }
 
-      // ── Course overview data ──
+      // ── Course overview data (transform raw plugin → CourseOverviewData) ──
       case "get_course_overview_data": {
         const courseId = params?.courseId;
         if (!courseId) throw { message: "Missing courseId", status: 400 };
-        result = await callMoodle("local_dashboard_get_course_overview", {
+        const rawCourse = await callMoodle("local_dashboard_get_course_overview", {
           courseid: String(courseId),
         });
+        const enrolled = rawCourse.enrolledUsers || [];
+        // Determine roles heuristically: users with no grade item and no completion = likely teacher
+        // For now treat all as students since plugin doesn't distinguish roles
+        const students = enrolled.map((u: any) => ({
+          id: u.id,
+          fullname: u.fullname,
+          email: u.email,
+          lastaccess: u.lastcourseaccess || u.lastaccess || 0,
+          completed: u.completed === 1,
+          completionPercentage: u.completed === 1 ? 100 : 0,
+          completionMethod: u.completed === 1 ? "criteria" : "none",
+          gradeRaw: u.grade ?? null,
+          gradeMax: u.grademax ?? 100,
+          gradeFormatted: u.grade != null ? `${Math.round(u.grade)}/${Math.round(u.grademax || 100)}` : "—",
+          gradeItems: [],
+          quizAttempts: [],
+        }));
+        // Attach quiz attempts to students
+        const quizMap = new Map<number, any[]>();
+        const quizNames = new Map<number, string>();
+        for (const qa of (rawCourse.quizAttempts || [])) {
+          if (!quizMap.has(qa.userid)) quizMap.set(qa.userid, []);
+          quizMap.get(qa.userid)!.push(qa);
+          quizNames.set(qa.quiz, qa.quizname);
+        }
+        for (const s of students) {
+          const userAttempts = quizMap.get(s.id) || [];
+          const byQuiz = new Map<number, any[]>();
+          for (const a of userAttempts) {
+            if (!byQuiz.has(a.quiz)) byQuiz.set(a.quiz, []);
+            byQuiz.get(a.quiz)!.push(a);
+          }
+          s.quizAttempts = Array.from(byQuiz.entries()).map(([qid, attempts]) => ({
+            quizName: quizNames.get(qid) || `Quiz ${qid}`,
+            quizId: qid,
+            attempts,
+          }));
+        }
+        const allBasic = enrolled.map((u: any) => ({
+          id: u.id,
+          fullname: u.fullname,
+          email: u.email,
+          lastaccess: u.lastcourseaccess || u.lastaccess || 0,
+          completed: u.completed === 1,
+        }));
+        const quizList = Array.from(quizNames.entries()).map(([id, name]) => ({ id, name }));
+        const neverAccessedCount = enrolled.filter((u: any) => !u.lastcourseaccess && !u.lastaccess).length;
+        result = {
+          totalEnrolled: enrolled.length,
+          totalStudents: enrolled.length,
+          totalTeachers: 0,
+          neverAccessed: neverAccessedCount,
+          students,
+          allStudentsBasic: allBasic,
+          quizzes: quizList,
+          teachers: [],
+        };
         break;
       }
 
-      // ── User full data ──
+      // ── User full data (transform plugin → UserFullData) ──
       case "get_user_full_data": {
         const userId = params?.userId;
         if (!userId) throw { message: "Missing userId", status: 400 };
-        result = await callMoodle("local_dashboard_get_user_data", {
+        const rawUser = await callMoodle("local_dashboard_get_user_data", {
           userid: String(userId),
         });
+        const pu = rawUser.user || {};
+        const userCourses = (rawUser.courses || []).map((c: any) => {
+          const courseQuizAttempts = (rawUser.quizAttempts || []).filter((qa: any) => qa.courseid === c.id);
+          const byQuiz = new Map<number, any[]>();
+          const qNames = new Map<number, string>();
+          for (const a of courseQuizAttempts) {
+            if (!byQuiz.has(a.quiz)) byQuiz.set(a.quiz, []);
+            byQuiz.get(a.quiz)!.push(a);
+            qNames.set(a.quiz, a.quizname);
+          }
+          return {
+            id: c.id,
+            shortname: c.shortname,
+            fullname: c.fullname,
+            progress: c.completed === 1 ? 100 : null,
+            completed: c.completed === 1,
+            completionPercentage: c.completed === 1 ? 100 : 0,
+            completionMethod: c.completed === 1 ? "criteria" : "none",
+            startdate: 0,
+            enddate: 0,
+            lastaccess: c.lastaccess || 0,
+            grades: c.grade != null ? [{ finalgrade: c.grade, grademax: c.grademax || 100 }] : null,
+            completion: null,
+            quizAttempts: Array.from(byQuiz.entries()).map(([qid, attempts]) => ({
+              quizName: qNames.get(qid) || `Quiz ${qid}`,
+              quizId: qid,
+              attempts,
+            })),
+            roles: [],
+          };
+        });
+        result = {
+          user: {
+            id: pu.id,
+            username: pu.username || "",
+            fullname: pu.fullname || "",
+            email: pu.email || "",
+            firstaccess: pu.firstaccess || 0,
+            lastaccess: pu.lastaccess || 0,
+            profileimageurl: pu.profileimageurl || "",
+            suspended: !!pu.suspended,
+          },
+          courses: userCourses,
+          totalCourses: userCourses.length,
+        };
         break;
       }
 
       // ── Activity completion report ──
       case "get_activity_completion_report": {
-        const courseId = params?.courseId;
-        if (!courseId) throw { message: "Missing courseId", status: 400 };
+        const courseId4 = params?.courseId;
+        if (!courseId4) throw { message: "Missing courseId", status: 400 };
         result = await callMoodle("local_dashboard_get_activity_completion", {
-          courseid: String(courseId),
+          courseid: String(courseId4),
         });
         break;
       }
 
       // ── Grader report ──
       case "get_grader_report": {
-        const courseId = params?.courseId;
-        if (!courseId) throw { message: "Missing courseId", status: 400 };
+        const courseId5 = params?.courseId;
+        if (!courseId5) throw { message: "Missing courseId", status: 400 };
         result = await callMoodle("local_dashboard_get_grader_report", {
-          courseid: String(courseId),
+          courseid: String(courseId5),
         });
         break;
       }
