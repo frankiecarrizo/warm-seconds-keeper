@@ -329,6 +329,7 @@ export interface UsersSummary {
   active: number;
   suspended: number;
   deleted: number;
+  totalTeachers?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════

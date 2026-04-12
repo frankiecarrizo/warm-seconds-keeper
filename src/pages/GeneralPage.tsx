@@ -93,7 +93,8 @@ const GeneralPage = () => {
   const stats = useMemo(() => {
     const totalStudents = enrollmentSummaries.reduce((s, e) => s + e.totalStudents, 0);
     const uniqueTeacherIds = new Set(enrollmentSummaries.flatMap((e: any) => e.teacherIds || []));
-    const totalTeachers = uniqueTeacherIds.size;
+    // Use unique teacher IDs from enrollment, fallback to usersSummary.totalTeachers
+    const totalTeachers = uniqueTeacherIds.size > 0 ? uniqueTeacherIds.size : (usersSummary?.totalTeachers || 0);
     const totalCompleted = enrollmentSummaries.reduce((s, e) => s + e.completed, 0);
     const totalChecked = enrollmentSummaries.reduce((s, e) => s + e.checkedStudents, 0);
     const totalNeverAccessed = enrollmentSummaries.reduce((s, e) => s + e.neverAccessed, 0);
@@ -101,7 +102,7 @@ const GeneralPage = () => {
     const neverAccessedRate = totalStudents > 0 ? Math.round((totalNeverAccessed / totalStudents) * 100) : 0;
     const totalAccessed = totalStudents - totalNeverAccessed;
     return { totalStudents, totalTeachers, totalCompleted, totalChecked, totalNeverAccessed, completionRate, neverAccessedRate, totalAccessed };
-  }, [enrollmentSummaries]);
+  }, [enrollmentSummaries, usersSummary]);
 
   // Chart data
   const chartData = useMemo(() => {
